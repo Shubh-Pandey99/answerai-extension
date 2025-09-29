@@ -1,16 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AnswerAI</title>
+  <meta charset="UTF-8">
+  <title>AI Meeting Assistant</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <h1>AnswerAI</h1>
-  <div class="button-container">
-    <button id="toggle">🎙️ Listen</button>
-    <button id="screenshot">📸 Capture</button>
+  <div class="container">
+    <div class="header">
+      <div class="header-title">
+        <span class="mic-icon">🎙️</span>
+        AI Meeting Assistant
+      </div>
+      <button class="close-btn">×</button>
+    </div>
+
+    <div class="listen-mode">
+      <span>Live Listen Mode</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-listen" checked>
+        <span class="slider round"></span>
+      </label>
+      <span class="live-indicator">● LIVE</span>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Real-time Transcript</div>
+      <div id="transcript" class="transcript-box">
+        <!-- Transcript content will go here -->
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="screenshot" class="action-btn">
+        <span class="btn-icon">📸</span> Capture Screen
+      </button>
+      <div class="ask-anything">
+        <input type="text" placeholder="Ask Anything...">
+        <button class="send-btn">→</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">AI Answers & Summaries</div>
+      <div id="response" class="summary-box">
+        <!-- AI response will go here -->
+      </div>
+    </div>
   </div>
-  <div id="response"></div>
   <script src="popup.js"></script>
 </body>
 </html>
