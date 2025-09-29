@@ -274,3 +274,19 @@ input:checked + .slider:before {
 .slider.round:before {
   border-radius: 50%;
 }
+
+.troubleshooting {
+  margin-top: 20px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 16px;
+}
+
+.troubleshooting h2 {
+  color: var(--primary-text-color);
+}
+
+.troubleshooting p {
+  font-size: 12px;
+  color: var(--secondary-text-color);
+  line-height: 1.6;
+}

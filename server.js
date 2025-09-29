@@ -9,6 +9,14 @@ const port = 3000;
 
 app.use(express.json());
 
+// Add CORS middleware
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*'); // Allow all origins
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+
 app.get('/', (req, res) => {
   res.send('AnswerAI server is running.');
 });
