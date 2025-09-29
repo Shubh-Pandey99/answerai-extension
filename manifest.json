@@ -9,15 +9,13 @@
     "tabCapture",
     "offscreen"
   ],
+  "host_permissions": [
+    "https://3000-firebase-answerai-extension-1759171945157.cluster-73qgvk7hjjadkrjeyexca5ivva.cloudworkstations.dev/"
+  ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html"
-  },
-  "offscreen": {
-    "reasons": ["USER_MEDIA"],
-    "justification": "Required to capture tab audio for transcription.",
-    "document_path": "offscreen.html"
   }
 }
