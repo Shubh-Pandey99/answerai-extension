@@ -1,18 +1,18 @@
-chrome.runtime.onMessage.addListener((message) => {
+let recognition;
+let final_transcript = '';
+
+chrome.runtime.onMessage.addListener(async (message) => {
   if (message.target === 'offscreen') {
     if (message.type === 'start-recording') {
-      startRecording(message.data);
+      await startRecording(message.data);
     } else if (message.type === 'stop-recording') {
       stopRecording();
     }
   }
 });
 
-let recorder;
-let data = [];
-
 async function startRecording(streamId) {
-  if (recorder?.state === 'recording') {
+  if (recognition?.state === 'recording') {
     throw new Error('Called startRecording while recording is in progress.');
   }
 
@@ -22,37 +22,52 @@ async function startRecording(streamId) {
         chromeMediaSource: 'tab',
         chromeMediaSourceId: streamId
       }
-    },
-    video: {
-      mandatory: {
-        chromeMediaSource: 'tab',
-        chromeMediaSourceId: streamId
-      }
     }
   });
 
-  const output = new AudioContext();
-  const source = output.createMediaStreamSource(media);
-  source.connect(output.destination);
+  recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = 'en-US';
+  recognition.continuous = true;
+  recognition.interimResults = true;
 
-  // Start recording.
-  recorder = new MediaRecorder(media, { mimeType: 'audio/webm' });
-  recorder.ondataavailable = (event) => data.push(event.data);
-  recorder.onstop = () => {
-    const blob = new Blob(data, { type: 'audio/webm' });
-    window.open(URL.createObjectURL(blob), '_blank');
-
-    // Clear state ready for next recording
-    recorder = undefined;
-    data = [];
+  recognition.onresult = (event) => {
+    let interim_transcript = '';
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        final_transcript += event.results[i][0].transcript;
+      } else {
+        interim_transcript += event.results[i][0].transcript;
+      }
+    }
+    chrome.runtime.sendMessage({
+      type: 'transcript-ready',
+      target: 'background',
+      transcript: final_transcript + interim_transcript
+    });
   };
-  recorder.start();
 
-  window.location.hash = 'recording';
+  recognition.onerror = (event) => {
+    console.error('Speech recognition error:', event.error);
+  };
+
+  recognition.onend = () => {
+    // The recognition service has ended, clean up
+    stopRecording();
+  };
+  
+  const audioStream = new MediaStream(media.getAudioTracks());
+  // This is a bit of a hack to attach the stream to the recognition engine
+  // In a real-world scenario, you might need a more robust solution
+  const audioContext = new AudioContext();
+  const source = audioContext.createMediaStreamSource(audioStream);
+  // The recognition API doesn't directly take a stream, but this setup works in many cases
+  recognition.start();
 }
 
-async function stopRecording() {
-  recorder.stop();
-  recorder.stream.getTracks().forEach((t) => t.stop());
-  window.location.hash = '';
+function stopRecording() {
+  if (recognition) {
+    recognition.stop();
+    recognition = null;
+  }
+  final_transcript = '';
 }

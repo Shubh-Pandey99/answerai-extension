@@ -8,72 +8,65 @@ document.addEventListener('DOMContentLoaded', () => {
   const qqaResponse = document.getElementById('qqa-response');
   const summarizeBtn = document.getElementById('summarize');
 
-  let recognition;
-  let final_transcript = '';
-
-  toggleListen.addEventListener('change', () => {
-    if (toggleListen.checked) {
-      startListening();
+  // Request initial state from background
+  chrome.runtime.sendMessage({ type: 'get-state' }, (response) => {
+    if (response && response.isRecording) {
+      updateUIRecording();
     } else {
-      stopListening();
+      updateUIIdle();
     }
   });
 
-  function startListening() {
-    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'en-US';
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    recognition.onstart = () => {
-      processingBtn.textContent = 'Listening...';
-      waveform.style.display = 'flex';
-      statusText.textContent = 'Status: Active & Listening...';
-      liveDot.classList.remove('hidden');
-      transcriptPopup.classList.remove('hidden');
-      final_transcript = '';
-    };
-
-    recognition.onresult = (event) => {
-      let interim_transcript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          final_transcript += event.results[i][0].transcript;
-        } else {
-          interim_transcript += event.results[i][0].transcript;
-        }
+  toggleListen.addEventListener('change', async () => {
+    if (toggleListen.checked) {
+      try {
+        // Request microphone permission to enable the SpeechRecognition API.
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Immediately stop the tracks to release the microphone, as we only need the permission.
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Now that permission is granted, proceed with tab audio capture.
+        chrome.runtime.sendMessage({ target: 'background', type: 'toggle-recording' });
+      } catch (error) {
+        console.error('Microphone permission denied:', error);
+        qqaResponse.textContent = 'Microphone permission is required for transcription to work.';
+        toggleListen.checked = false; // Revert the toggle if permission is denied.
       }
-      transcriptPopup.textContent = final_transcript + interim_transcript;
-    };
+    } else {
+      // If turning off, just send the message to stop recording.
+      chrome.runtime.sendMessage({ target: 'background', type: 'toggle-recording' });
+    }
+  });
 
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      stopListening();
-    };
-
-    recognition.onend = () => {
-      if (toggleListen.checked) {
-        // If still supposed to be listening, restart
-        recognition.start();
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'recording-started') {
+      updateUIRecording();
+    } else if (message.type === 'recording-stopped') {
+      updateUIIdle();
+      if (message.transcript) {
+        transcriptPopup.textContent = message.transcript;
+        transcriptPopup.classList.remove('hidden');
       }
-    };
+    } else if (message.type === 'transcript-update') {
+        transcriptPopup.textContent = message.transcript;
+        transcriptPopup.classList.remove('hidden');
+    }
+  });
 
-    recognition.start();
+  function updateUIRecording() {
+    toggleListen.checked = true;
+    processingBtn.textContent = 'Listening...';
+    waveform.style.display = 'flex';
+    statusText.textContent = 'Status: Active & Listening...';
+    liveDot.classList.remove('hidden');
   }
 
-  function stopListening() {
-    if (recognition) {
-      recognition.stop();
-    }
+  function updateUIIdle() {
+    toggleListen.checked = false;
     processingBtn.textContent = 'Processing transcript';
     waveform.style.display = 'none';
     statusText.textContent = 'Status: Inactive';
     liveDot.classList.add('hidden');
-    transcriptPopup.classList.add('hidden');
-
-    if (final_transcript) {
-      getSummary(final_transcript);
-    }
   }
 
   async function getSummary(transcript) {
@@ -93,17 +86,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   summarizeBtn.addEventListener('click', () => {
-    if (final_transcript) {
-      getSummary(final_transcript);
+    const transcript = transcriptPopup.textContent;
+    if (transcript && transcript !== 'Nothing to summarize yet.') {
+      getSummary(transcript);
     } else {
       qqaResponse.textContent = 'Nothing to summarize yet.';
     }
   });
 
   // Screenshot functionality
+  const screenshotPreview = document.getElementById('screenshot-preview');
   document.getElementById('capture-screen').addEventListener('click', () => {
     chrome.tabs.captureVisibleTab({ format: 'png' }, (screenshotUrl) => {
       if (screenshotUrl) {
+        screenshotPreview.src = screenshotUrl;
+        screenshotPreview.classList.remove('hidden');
         getSummaryForImage(screenshotUrl);
       } else {
         console.error('Could not capture screenshot.');
