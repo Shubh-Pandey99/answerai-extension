@@ -22,19 +22,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  let fullTranscript = '';
+
   // Listener for tab recording state changes
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'recording-started') {
       updateUIRecording();
     } else if (message.type === 'recording-stopped') {
       updateUIIdle();
-      if (message.transcript) {
-        transcriptPopup.textContent = message.transcript;
-        transcriptPopup.classList.remove('hidden');
-      }
     } else if (message.type === 'transcript-update') {
-        transcriptPopup.textContent = message.transcript;
-        transcriptPopup.classList.remove('hidden');
+      fullTranscript += message.transcript + ' ';
+      transcriptPopup.textContent = fullTranscript;
+      transcriptPopup.classList.remove('hidden');
     }
   });
 
@@ -55,7 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
       askInput.value = event.results[0][0].transcript;
     };
     recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
       askInput.placeholder = 'Error listening.';
     };
     recognition.onend = () => {
@@ -75,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
         summarizeImageBtn.classList.remove('hidden');
         captureScreenBtn.classList.add('hidden');
       } else {
-        console.error('Could not capture screenshot.');
         qqaResponse.textContent = 'Failed to capture screenshot.';
       }
     });
@@ -90,9 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Summarize transcript
   summarizeBtn.addEventListener('click', () => {
-    const transcript = transcriptPopup.textContent;
-    if (transcript && transcript !== 'Nothing to summarize yet.') {
-      getSummary(transcript);
+    if (fullTranscript && fullTranscript.trim() !== '') {
+      getSummary(fullTranscript);
     } else {
       qqaResponse.textContent = 'Nothing to summarize yet.';
     }
@@ -105,7 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
     statusText.textContent = 'Status: Active & Listening...';
     liveDot.classList.remove('hidden');
     transcriptPopup.classList.remove('hidden');
-    transcriptPopup.textContent = 'Listening to tab audio...';
+    transcriptPopup.textContent = 'Starting transcription...';
+    fullTranscript = ''; // Reset transcript
   }
 
   function updateUIIdle() {
@@ -127,8 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       qqaResponse.textContent = data.answer;
     } catch (error) {
-      console.error('Error getting summary:', error);
-      qqaResponse.textContent = 'Error summarizing transcript. Is the server running?';
+      qqaResponse.textContent = 'Error summarizing transcript.';
     }
   }
 
@@ -143,8 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       qqaResponse.textContent = data.answer;
     } catch (error) {
-      console.error('Error getting image summary:', error);
-      qqaResponse.textContent = 'Error analyzing image. Is the server running?';
+      qqaResponse.textContent = 'Error analyzing image.';
     }
   }
 });
