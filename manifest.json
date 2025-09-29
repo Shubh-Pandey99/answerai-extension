@@ -1,8 +1,33 @@
 {
   "manifest_version": 3,
-  "name": "AnswerAI",
+  "name": "AI Meeting Assistant",
   "version": "1.0",
-  "permissions": ["microphone", "tabs", "activeTab", "scripting"],
-  "background": { "service_worker": "background.js" },
-  "action": { "default_popup": "popup.html" }
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "scripting",
+    "tabCapture",
+    "offscreen"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "public/icon.png",
+      "48": "public/icon.png",
+      "128": "public/icon.png"
+    }
+  },
+  "icons": {
+    "16": "public/icon.png",
+    "48": "public/icon.png",
+    "128": "public/icon.png"
+  },
+  "offscreen": {
+    "reasons": ["USER_MEDIA"],
+    "justification": "Required to capture tab audio for transcription.",
+    "document_path": "offscreen.html"
+  }
 }

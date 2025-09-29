@@ -1,9 +1,9 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: #1c1e21;
-  color: #e4e6eb;
+  background-color: #202124;
+  color: #e8eaed;
   margin: 0;
-  width: 350px;
+  width: 550px;
 }
 
 .container {
@@ -12,106 +12,156 @@ body {
 
 .header {
   display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.main-content {
+  display: flex;
+  gap: 16px;
+}
+
+.column {
+  flex: 1;
+  background-color: #2d2e30;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.section-header {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #bdc1c6;
+}
+
+.control-item {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
-.header-title {
-  font-size: 16px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mic-icon {
-  font-size: 20px;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: #b0b3b8;
-  font-size: 20px;
-  cursor: pointer;
-}
-
-.listen-mode {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-  font-size: 14px;
-}
-
-.live-indicator {
-  color: #fa383e;
-  font-weight: 600;
-}
-
-.section {
-  margin-bottom: 16px;
-}
-
-.section-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #b0b3b8;
-}
-
-.transcript-box, .summary-box {
-  background-color: #242526;
-  border: 1px solid #3a3b3c;
-  border-radius: 6px;
-  padding: 12px;
-  min-height: 60px;
-  font-size: 14px;
-}
-
-.actions {
-  margin-bottom: 16px;
-}
-
-.action-btn {
-  background-color: #3a3b3c;
-  color: #e4e6eb;
-  border: 1px solid #4d4e4f;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 14px;
-  cursor: pointer;
+.processing-status button {
   width: 100%;
-  text-align: left;
+  background-color: #3c4043;
+  border: none;
+  color: #e8eaed;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.waveform {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 20px;
+  gap: 2px;
+}
+
+.waveform .bar {
+  width: 4px;
+  height: 100%;
+  background-color: #5f6368;
+  animation: wave 1.2s infinite ease-in-out;
+}
+.waveform .bar:nth-child(2) { animation-delay: -1.1s; }
+.waveform .bar:nth-child(3) { animation-delay: -1.0s; }
+.waveform .bar:nth-child(4) { animation-delay: -0.9s; }
+.waveform .bar:nth-child(5) { animation-delay: -0.8s; }
+
+@keyframes wave {
+  0%, 40%, 100% { transform: scaleY(0.4); }
+  20% { transform: scaleY(1.0); }
+}
+
+.capture-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.capture-buttons button {
+  background-color: #3c4043;
+  border: none;
+  color: #e8eaed;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
 }
 
 .ask-anything {
   display: flex;
   gap: 8px;
+  margin-bottom: 8px;
 }
 
-input[type="text"] {
+.ask-anything input {
   flex-grow: 1;
-  background-color: #242526;
-  border: 1px solid #3a3b3c;
-  border-radius: 6px;
-  padding: 8px 12px;
-  color: #e4e6eb;
-  font-size: 14px;
+  background-color: #3c4043;
+  border: 1px solid #5f6368;
+  border-radius: 4px;
+  padding: 8px;
+  color: #e8eaed;
 }
 
-.send-btn {
-  background-color: #2d88ff;
+.icon-btn {
+  background-color: #3c4043;
   border: none;
-  border-radius: 6px;
-  color: white;
-  padding: 8px 12px;
+  color: #e8eaed;
+  border-radius: 4px;
+  padding: 8px;
   cursor: pointer;
+}
+
+.qqa-response-box {
+  background-color: #3c4043;
+  border-radius: 4px;
+  padding: 8px;
+  min-height: 40px;
+  margin-bottom: 8px;
+}
+
+#summarize {
+  width: 100%;
+  background-color: #8ab4f8;
+  border: none;
+  color: #202124;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  font-size: 12px;
+  color: #bdc1c6;
+}
+
+#live-dot {
+  width: 8px;
+  height: 8px;
+  background-color: red;
+  border-radius: 50%;
+}
+
+.hidden {
+  display: none;
 }
 
 /* Switch toggle styles */
@@ -135,7 +185,7 @@ input[type="text"] {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #3a3b3c;
+  background-color: #5f6368;
   transition: .4s;
 }
 
@@ -151,7 +201,7 @@ input[type="text"] {
 }
 
 input:checked + .slider {
-  background-color: #2d88ff;
+  background-color: #8ab4f8;
 }
 
 input:checked + .slider:before {

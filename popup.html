@@ -8,44 +8,62 @@
 <body>
   <div class="container">
     <div class="header">
-      <div class="header-title">
-        <span class="mic-icon">🎙️</span>
-        AI Meeting Assistant
-      </div>
-      <button class="close-btn">×</button>
-    </div>
-
-    <div class="listen-mode">
-      <span>Live Listen Mode</span>
-      <label class="switch">
-        <input type="checkbox" id="toggle-listen" checked>
-        <span class="slider round"></span>
-      </label>
-      <span class="live-indicator">● LIVE</span>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Real-time Transcript</div>
-      <div id="transcript" class="transcript-box">
-        <!-- Transcript content will go here -->
+      <div class="logo">
+        <img src="public/icon.png" alt="logo" width="24">
+        <span>AI Meeting Assistant</span>
       </div>
     </div>
 
-    <div class="actions">
-      <button id="screenshot" class="action-btn">
-        <span class="btn-icon">📸</span> Capture Screen
-      </button>
-      <div class="ask-anything">
-        <input type="text" placeholder="Ask Anything...">
-        <button class="send-btn">→</button>
+    <div class="main-content">
+      <!-- Column 1: Live Audio -->
+      <div class="column">
+        <div class="section-header">Live Audio</div>
+        <div class="control-item">
+          <span>Listen Mode</span>
+          <label class="switch">
+            <input type="checkbox" id="toggle-listen">
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="processing-status">
+          <button id="processing-btn" disabled>Processing transcript</button>
+          <div class="waveform">
+            <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 2: Screen Capture -->
+      <div class="column">
+        <div class="section-header">Screen Capture</div>
+        <div class="capture-buttons">
+          <button id="capture-screen"><span class="icon">📷</span> Capture Screen</button>
+          <button id="annotate" disabled><span class="icon">✏️</span> Annotate</button>
+        </div>
+      </div>
+
+      <!-- Column 3: Real-time QQA -->
+      <div class="column">
+        <div class="section-header">Real-time QQA</div>
+        <div class="ask-anything">
+          <input type="text" id="ask-input" placeholder="Ask anything...">
+          <button id="ask-mic" class="icon-btn">🎙️</button>
+          <button id="ask-send" class="icon-btn">⚡</button>
+        </div>
+        <div id="qqa-response" class="qqa-response-box">
+          <!-- QQA response here -->
+        </div>
+        <button id="summarize">Summarize the key points <span class="icon">🔊</span></button>
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">AI Answers & Summaries</div>
-      <div id="response" class="summary-box">
-        <!-- AI response will go here -->
-      </div>
+    <div id="live-transcript-popup" class="hidden">
+      <!-- Live transcript will be injected here -->
+    </div>
+
+    <div class="footer">
+      <span id="status-text">Status: Inactive</span>
+      <div id="live-dot" class="hidden"></div>
     </div>
   </div>
   <script src="popup.js"></script>
