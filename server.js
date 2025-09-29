@@ -1,5 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import cors from 'cors';
 import handler from './api/answer.js';
 
 dotenv.config({ path: '.env.local' });
@@ -7,15 +8,9 @@ dotenv.config({ path: '.env.local' });
 const app = express();
 const port = 3000;
 
+// Use CORS middleware
+app.use(cors());
 app.use(express.json());
-
-// Add CORS middleware
-app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*'); // Allow all origins
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  next();
-});
 
 app.get('/', (req, res) => {
   res.send('AnswerAI server is running.');

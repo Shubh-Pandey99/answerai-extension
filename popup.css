@@ -177,6 +177,17 @@ h2 {
   background-color: var(--button-hover-color);
 }
 
+.icon-btn.recording {
+  animation: glowing 1.5s infinite;
+  box-shadow: 0 0 5px var(--blue-accent), 0 0 10px var(--blue-accent);
+}
+
+@keyframes glowing {
+  0% { box-shadow: 0 0 3px var(--blue-accent); }
+  50% { box-shadow: 0 0 10px var(--blue-accent), 0 0 15px var(--blue-accent); }
+  100% { box-shadow: 0 0 3px var(--blue-accent); }
+}
+
 .qqa-response-box {
   background-color: var(--button-color);
   border-radius: 8px;

@@ -1,5 +1,6 @@
 let recognition;
 let final_transcript = '';
+let audio;
 
 chrome.runtime.onMessage.addListener(async (message) => {
   if (message.target === 'offscreen') {
@@ -56,6 +57,12 @@ async function startRecording(streamId) {
   };
   
   const audioStream = new MediaStream(media.getAudioTracks());
+  
+  // Play the audio stream back to the user
+  audio = new Audio();
+  audio.srcObject = audioStream;
+  audio.play();
+
   // This is a bit of a hack to attach the stream to the recognition engine
   // In a real-world scenario, you might need a more robust solution
   const audioContext = new AudioContext();
@@ -65,6 +72,11 @@ async function startRecording(streamId) {
 }
 
 function stopRecording() {
+  if (audio) {
+    audio.pause();
+    audio.srcObject = null;
+    audio = null;
+  }
   if (recognition) {
     recognition.stop();
     recognition = null;

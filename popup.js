@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     recognition.lang = 'en-US';
     recognition.onstart = () => {
       askInput.placeholder = 'Listening...';
+      askMicBtn.classList.add('recording');
     };
     recognition.onresult = (event) => {
       askInput.value = event.results[0][0].transcript;
@@ -59,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     recognition.onend = () => {
       askInput.placeholder = 'Ask anything...';
+      askMicBtn.classList.remove('recording');
     };
     recognition.start();
   });
@@ -102,6 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
     waveform.style.display = 'flex';
     statusText.textContent = 'Status: Active & Listening...';
     liveDot.classList.remove('hidden');
+    transcriptPopup.classList.remove('hidden');
+    transcriptPopup.textContent = 'Listening to tab audio...';
   }
 
   function updateUIIdle() {
