@@ -15,15 +15,15 @@
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "16": "public/icon.png",
-      "48": "public/icon.png",
-      "128": "public/icon.png"
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
     }
   },
   "icons": {
-    "16": "public/icon.png",
-    "48": "public/icon.png",
-    "128": "public/icon.png"
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
   },
   "offscreen": {
     "reasons": ["USER_MEDIA"],
