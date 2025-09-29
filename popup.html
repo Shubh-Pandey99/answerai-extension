@@ -18,11 +18,11 @@
           <div class="listen-mode">
             <span>Listen Mode</span>
             <label class="switch">
-              <input type="checkbox" id="toggle-listen">
+              <input type="checkbox" id="toggle-tab-audio">
               <span class="slider round"></span>
             </label>
+            <span class="toggle-label">Tab Audio</span>
           </div>
-          <button id="processing-btn" class="processing-btn" disabled>Processing transcript</button>
           <div class="waveform">
             <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
           </div>
@@ -39,15 +39,15 @@
             <button id="capture-screen" class="capture-btn">
               <span class="icon">📷</span> Capture Screen
             </button>
+            <button id="summarize-image" class="summarize-btn hidden">Summarize Image</button>
           </div>
         </div>
         <div class="card">
-          <h2>Real-time QQA</h2>
+          <h2>Real-time Q&A</h2>
           <div class="qqa-area">
             <div class="ask-anything">
               <input type="text" id="ask-input" placeholder="Ask anything...">
-              <button id="ask-mic" class="icon-btn">🎙️</button>
-              <button id="ask-send" class="icon-btn">⚡</button>
+              <button id="ask-mic" class="icon-btn">🎤</button>
             </div>
             <div id="qqa-response" class="qqa-response-box">
               <!-- QQA response here -->

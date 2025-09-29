@@ -7,8 +7,7 @@
     "activeTab",
     "scripting",
     "tabCapture",
-    "offscreen",
-    "audioCapture"
+    "offscreen"
   ],
   "background": {
     "service_worker": "background.js"
