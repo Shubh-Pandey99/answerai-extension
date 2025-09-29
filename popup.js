@@ -16,7 +16,7 @@ function startListening() {
     const transcript = event.results[0][0].transcript;
     document.getElementById("response").innerText = "Thinking...";
 
-    const res = await fetch("https://YOUR-VERCEL-APP.vercel.app/api/answer", {
+    const res = await fetch("http://localhost:3000/api/answer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ transcript })
