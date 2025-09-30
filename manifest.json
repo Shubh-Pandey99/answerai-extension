@@ -2,27 +2,11 @@
   "manifest_version": 3,
   "name": "AI Meeting Assistant",
   "version": "1.0",
-  "permissions": [
-    "storage",
-    "tabs",
-    "activeTab",
-    "scripting",
-    "tabCapture",
-    "offscreen"
-  ],
-  "host_permissions": [
-    "https://*.vercel.app/"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_popup": "popup.html"
-  },
+  "permissions": ["storage","tabs","activeTab","scripting","tabCapture","offscreen"],
+  "host_permissions": ["https://*.vercel.app/"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html" },
   "web_accessible_resources": [
-    {
-      "resources": ["audio-processor.js"],
-      "matches": ["<all_urls>"]
-    }
+    { "resources": ["audio-processor.js"], "matches": ["<all_urls>"] }
   ]
 }

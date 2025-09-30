@@ -1,8 +1,8 @@
 class AudioProcessor extends AudioWorkletProcessor {
-  process(inputs, outputs, parameters) {
+  process(inputs, outputs) {
     const input = inputs[0];
-    if (input.length > 0) {
-      // Forward the audio data (Float32Array) to the main script
+    if (input && input.length > 0) {
+      // Send Float32Array of audio to main thread
       this.port.postMessage(input[0]);
     }
     return true;

@@ -5,7 +5,6 @@ import google.generativeai as genai
 from PIL import Image
 import requests
 from io import BytesIO
-import base64
 import re
 
 app = Flask(__name__)
@@ -13,11 +12,6 @@ CORS(app)
 
 def is_valid_url(url):
     return re.match(r'^https?://', url)
-
-def pil_to_base64(img):
-    buffered = BytesIO()
-    img.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
@@ -35,7 +29,7 @@ def get_answer():
     if not provider:
         return jsonify({"error": "No provider specified."}), 400
     if not api_key and provider != 'mock':
-        return jsonify({"error": "API key is required for the selected provider."}), 400
+        return jsonify({"error": "API key is required."}), 400
     if not transcript and not image_url:
         return jsonify({"error": "No transcript or image URL provided."}), 400
     if image_url and not is_valid_url(image_url):
@@ -54,12 +48,15 @@ def get_answer():
                 )
                 return jsonify({"answer": response.choices[0].message.content})
             elif image_url:
-                # Correct GPT-4V usage: use `input` for image URL
                 response = client.chat.completions.create(
                     model="gpt-4-vision-preview",
-                    messages=[{"role": "user", "content": "Describe this image."}],
-                    input=image_url,
-                    max_tokens=300
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "What’s in this image?"},
+                            {"type": "image_url", "image_url": {"url": image_url}},
+                        ],
+                    }]
                 )
                 return jsonify({"answer": response.choices[0].message.content})
 
@@ -68,11 +65,11 @@ def get_answer():
             if transcript:
                 response = client.chat.completions.create(
                     model="openai/gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": transcript}]
+                    messages=[{"role": "user", "content": transcript}],
                 )
                 return jsonify({"answer": response.choices[0].message.content})
             else:
-                return jsonify({"error": "OpenRouter provider does not support images."}), 400
+                return jsonify({"error": "OpenRouter provider does not support image analysis."}), 400
 
         elif provider == 'google':
             genai.configure(api_key=api_key)
@@ -81,12 +78,10 @@ def get_answer():
                 response = model.generate_content(transcript)
                 return jsonify({"answer": response.text})
             elif image_url:
-                # Download image and convert to base64 for Gemini Vision
-                img_resp = requests.get(image_url)
-                img = Image.open(BytesIO(img_resp.content))
-                img_base64 = pil_to_base64(img)
                 model = genai.GenerativeModel('gemini-pro-vision')
-                response = model.generate_content(img_base64)
+                response = requests.get(image_url)
+                img = Image.open(BytesIO(response.content))
+                response = model.generate_content(img)
                 return jsonify({"answer": response.text})
 
         else:

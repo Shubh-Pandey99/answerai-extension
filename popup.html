@@ -34,6 +34,7 @@
           </div>
           <button id="save-settings" class="summarize-btn">Save Settings</button>
         </div>
+
         <div class="card">
           <h2>Live Audio</h2>
           <div class="listen-mode">
@@ -45,13 +46,17 @@
             <span class="toggle-label">Tab Audio</span>
           </div>
           <div class="waveform">
-            <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
           </div>
         </div>
-        <div id="live-transcript-popup" class="transcript-card hidden">
-          <!-- Live transcript will be injected here -->
-        </div>
+
+        <div id="live-transcript-popup" class="transcript-card hidden"></div>
       </div>
+
       <div class="right-panel">
         <div class="card">
           <h2>Screen Capture</h2>
@@ -63,6 +68,7 @@
             <button id="summarize-image" class="summarize-btn hidden">Summarize Image</button>
           </div>
         </div>
+
         <div class="card">
           <h2>Real-time Q&A</h2>
           <div class="qqa-area">
@@ -70,14 +76,13 @@
               <input type="text" id="ask-input" placeholder="Ask anything...">
               <button id="ask-mic" class="icon-btn">🎤</button>
             </div>
-            <div id="qqa-response" class="qqa-response-box">
-              <!-- QQA response here -->
-            </div>
+            <div id="qqa-response" class="qqa-response-box"></div>
             <button id="summarize" class="summarize-btn">Summarize the key points <span class="icon">🔊</span></button>
           </div>
         </div>
       </div>
     </div>
+
     <div class="footer">
       <span id="status-text">Status: Inactive</span>
       <div id="live-dot" class="hidden"></div>

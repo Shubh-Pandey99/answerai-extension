@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // --- Element References ---
   const toggleTabAudio = document.getElementById('toggle-tab-audio');
   const waveform = document.querySelector('.waveform');
   const statusText = document.getElementById('status-text');
@@ -16,107 +15,86 @@ document.addEventListener('DOMContentLoaded', () => {
   const apiKeyInput = document.getElementById('api-key-input');
   const saveSettingsBtn = document.getElementById('save-settings');
   const vercelUrlInput = document.getElementById('vercel-url-input');
-  let screenshotUrl = null;
-
-  // --- Initial State & Permissions ---
-
-  // Load saved settings from chrome.storage
-  chrome.storage.local.get(['provider', 'apiKey', 'vercelUrl'], (result) => {
-    if (result.provider) {
-      providerSelect.value = result.provider;
-    }
-    if (result.apiKey) {
-      apiKeyInput.value = result.apiKey;
-    }
-    if (result.vercelUrl) {
-      vercelUrlInput.value = result.vercelUrl;
-    }
-  });
-
-  // Proactively request microphone permission when the popup opens
-  navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(stream => {
-      // Permission granted, we can close the stream immediately
-      stream.getTracks().forEach(track => track.stop());
-    })
-    .catch(err => {
-      // Permission denied, display a message
-      if (err.name === 'NotAllowedError') {
-        qqaResponse.textContent = 'Microphone permission is required for voice input. Please allow access.';
-      }
-    });
-
-  // Request initial state from background for tab recording
-  chrome.runtime.sendMessage({ type: 'get-state' }, (response) => {
-    if (chrome.runtime.lastError) {
-      console.error(chrome.runtime.lastError);
-      return;
-    }
-    if (response && response.isRecording) {
-      updateUIRecording();
-    } else {
-      updateUIIdle();
-    }
-  });
 
   let fullTranscript = '';
+  let screenshotUrl = null;
 
-  // --- Event Listeners ---
+  // Load settings
+  chrome.storage.local.get(['provider', 'apiKey', 'vercelUrl'], (res) => {
+    if (res.provider) providerSelect.value = res.provider;
+    if (res.apiKey) apiKeyInput.value = res.apiKey;
+    if (res.vercelUrl) vercelUrlInput.value = res.vercelUrl;
+  });
 
-  // Save settings to chrome.storage
+  const waveformBars = document.querySelectorAll('.waveform .bar');
+
+  function animateWaveform(audioData) {
+    let sum = 0;
+    for (let i = 0; i < audioData.length; i++) sum += audioData[i] ** 2;
+    const rms = Math.sqrt(sum / audioData.length);
+
+    waveformBars.forEach((bar, idx) => {
+      const scale = Math.min(1, rms * 10 + Math.random() * 0.5);
+      bar.style.height = `${Math.max(4, scale * 24)}px`;
+      bar.style.opacity = 0.3 + scale * 0.7;
+    });
+  }
+
+  function updateUIRecording() {
+    toggleTabAudio.checked = true;
+    waveform.style.display = 'flex';
+    statusText.textContent = 'Status: Active & Listening...';
+    liveDot.classList.remove('hidden');
+    transcriptPopup.classList.remove('hidden');
+    transcriptPopup.textContent = 'Starting transcription...';
+    fullTranscript = '';
+  }
+
+  function updateUIIdle() {
+    toggleTabAudio.checked = false;
+    waveform.style.display = 'none';
+    statusText.textContent = 'Status: Inactive';
+    liveDot.classList.add('hidden');
+    waveformBars.forEach(bar => {
+      bar.style.height = '4px';
+      bar.style.opacity = 0.3;
+    });
+  }
+
+  // Listen to messages
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'recording-started') updateUIRecording();
+    if (message.type === 'recording-stopped') updateUIIdle();
+    if (message.type === 'transcript-update') {
+      fullTranscript += message.transcript + ' ';
+      transcriptPopup.textContent = fullTranscript;
+      transcriptPopup.classList.remove('hidden');
+    }
+    if (message.type === 'audio-data') animateWaveform(message.data);
+  });
+
+  toggleTabAudio.addEventListener('change', () => {
+    chrome.runtime.sendMessage({ target: 'background', type: 'toggle-recording' });
+  });
+
   saveSettingsBtn.addEventListener('click', () => {
     const provider = providerSelect.value;
     const apiKey = apiKeyInput.value;
     const vercelUrl = vercelUrlInput.value;
     chrome.storage.local.set({ provider, apiKey, vercelUrl }, () => {
-      const originalText = saveSettingsBtn.textContent;
       saveSettingsBtn.textContent = 'Saved!';
-      setTimeout(() => {
-        saveSettingsBtn.textContent = originalText;
-      }, 1500);
+      setTimeout(() => { saveSettingsBtn.textContent = 'Save Settings'; }, 1500);
     });
   });
 
-  // Listener for messages from the background script
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === 'recording-started') {
-      updateUIRecording();
-    } else if (message.type === 'recording-stopped') {
-      updateUIIdle();
-    } else if (message.type === 'transcript-update') {
-      fullTranscript += message.transcript + ' ';
-      transcriptPopup.textContent = fullTranscript;
-      transcriptPopup.classList.remove('hidden');
-    }
-  });
-
-  // Toggle tab audio recording
-  toggleTabAudio.addEventListener('change', () => {
-    chrome.runtime.sendMessage({ target: 'background', type: 'toggle-recording' });
-  });
-
-  // Microphone input for Q&A
+  // Q&A Mic
   askMicBtn.addEventListener('click', () => {
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.lang = 'en-US';
-    recognition.onstart = () => {
-      askInput.placeholder = 'Listening...';
-      askMicBtn.classList.add('recording');
-    };
-    recognition.onresult = (event) => {
-      askInput.value = event.results[0][0].transcript;
-    };
-    recognition.onerror = (event) => {
-      if (event.error === 'not-allowed') {
-        qqaResponse.textContent = 'Microphone permission denied. Please allow microphone access in your browser settings.';
-      } else {
-        askInput.placeholder = 'Error listening.';
-      }
-    };
-    recognition.onend = () => {
-      askInput.placeholder = 'Ask anything...';
-      askMicBtn.classList.remove('recording');
-    };
+    recognition.onstart = () => { askInput.placeholder = 'Listening...'; askMicBtn.classList.add('recording'); };
+    recognition.onresult = (event) => { askInput.value = event.results[0][0].transcript; };
+    recognition.onerror = (event) => { askInput.placeholder = 'Error listening.'; };
+    recognition.onend = () => { askInput.placeholder = 'Ask anything...'; askMicBtn.classList.remove('recording'); };
     recognition.start();
   });
 
@@ -160,24 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
       qqaResponse.textContent = 'Nothing to summarize yet.';
     }
   });
-
-  // --- UI Update Functions ---
-  function updateUIRecording() {
-    toggleTabAudio.checked = true;
-    waveform.style.display = 'flex';
-    statusText.textContent = 'Status: Active & Listening...';
-    liveDot.classList.remove('hidden');
-    transcriptPopup.classList.remove('hidden');
-    transcriptPopup.textContent = 'Starting transcription...';
-    fullTranscript = '';
-  }
-
-  function updateUIIdle() {
-    toggleTabAudio.checked = false;
-    waveform.style.display = 'none';
-    statusText.textContent = 'Status: Inactive';
-    liveDot.classList.add('hidden');
-  }
 
   // --- API Call Functions ---
   async function getSummary(transcript) {
