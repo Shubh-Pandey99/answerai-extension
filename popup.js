@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // --- Element References ---
   const toggleTabAudio = document.getElementById('toggle-tab-audio');
   const waveform = document.querySelector('.waveform');
   const statusText = document.getElementById('status-text');
@@ -11,10 +12,42 @@ document.addEventListener('DOMContentLoaded', () => {
   const screenshotPreview = document.getElementById('screenshot-preview');
   const captureScreenBtn = document.getElementById('capture-screen');
   const summarizeImageBtn = document.getElementById('summarize-image');
+  const providerSelect = document.getElementById('provider-select');
+  const apiKeyInput = document.getElementById('api-key-input');
+  const saveSettingsBtn = document.getElementById('save-settings');
   let screenshotUrl = null;
+
+  // --- Initial State & Permissions ---
+
+  // Load saved settings from chrome.storage
+  chrome.storage.local.get(['provider', 'apiKey'], (result) => {
+    if (result.provider) {
+      providerSelect.value = result.provider;
+    }
+    if (result.apiKey) {
+      apiKeyInput.value = result.apiKey;
+    }
+  });
+
+  // Proactively request microphone permission when the popup opens
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(stream => {
+      // Permission granted, we can close the stream immediately
+      stream.getTracks().forEach(track => track.stop());
+    })
+    .catch(err => {
+      // Permission denied, display a message
+      if (err.name === 'NotAllowedError') {
+        qqaResponse.textContent = 'Microphone permission is required for voice input. Please allow access.';
+      }
+    });
 
   // Request initial state from background for tab recording
   chrome.runtime.sendMessage({ type: 'get-state' }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error(chrome.runtime.lastError);
+      return;
+    }
     if (response && response.isRecording) {
       updateUIRecording();
     } else {
@@ -24,7 +57,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let fullTranscript = '';
 
-  // Listener for tab recording state changes
+  // --- Event Listeners ---
+
+  // Save settings to chrome.storage
+  saveSettingsBtn.addEventListener('click', () => {
+    const provider = providerSelect.value;
+    const apiKey = apiKeyInput.value;
+    chrome.storage.local.set({ provider, apiKey }, () => {
+      const originalText = saveSettingsBtn.textContent;
+      saveSettingsBtn.textContent = 'Saved!';
+      setTimeout(() => {
+        saveSettingsBtn.textContent = originalText;
+      }, 1500);
+    });
+  });
+
+  // Listener for messages from the background script
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'recording-started') {
       updateUIRecording();
@@ -69,13 +117,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Screen capture functionality
   captureScreenBtn.addEventListener('click', () => {
-    // Check if tab audio is currently being recorded
     chrome.runtime.sendMessage({ type: 'get-state' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error(chrome.runtime.lastError);
+        return;
+      }
       if (response && response.isRecording) {
         qqaResponse.textContent = 'Cannot capture screen while tab audio is being recorded.';
         return;
       }
-
       chrome.tabs.captureVisibleTab({ format: 'png' }, (url) => {
         if (url) {
           screenshotUrl = url;
@@ -114,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
     liveDot.classList.remove('hidden');
     transcriptPopup.classList.remove('hidden');
     transcriptPopup.textContent = 'Starting transcription...';
-    fullTranscript = ''; // Reset transcript
+    fullTranscript = '';
   }
 
   function updateUIIdle() {
@@ -128,13 +178,18 @@ document.addEventListener('DOMContentLoaded', () => {
   async function getSummary(transcript) {
     qqaResponse.textContent = 'Summarizing...';
     try {
+      const { provider, apiKey } = await new Promise(resolve => chrome.storage.local.get(['provider', 'apiKey'], resolve));
       const res = await fetch('https://answerai-extension-twq4.vercel.app/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: `Summarize this: ${transcript}` })
+        body: JSON.stringify({
+          transcript: `Summarize this: ${transcript}`,
+          provider: provider || 'openai',
+          apiKey: apiKey || ''
+        })
       });
       const data = await res.json();
-      qqaResponse.textContent = data.answer;
+      qqaResponse.textContent = data.answer || 'No summary received.';
     } catch (error) {
       qqaResponse.textContent = 'Error summarizing transcript.';
     }
@@ -143,13 +198,18 @@ document.addEventListener('DOMContentLoaded', () => {
   async function getSummaryForImage(imageUrl) {
     qqaResponse.textContent = 'Analyzing image...';
     try {
+      const { provider, apiKey } = await new Promise(resolve => chrome.storage.local.get(['provider', 'apiKey'], resolve));
       const res = await fetch('https://answerai-extension-twq4.vercel.app/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: imageUrl })
+        body: JSON.stringify({
+          imageUrl,
+          provider: provider || 'openai',
+          apiKey: apiKey || ''
+        })
       });
       const data = await res.json();
-      qqaResponse.textContent = data.answer;
+      qqaResponse.textContent = data.answer || 'No analysis received.';
     } catch (error) {
       qqaResponse.textContent = 'Error analyzing image.';
     }

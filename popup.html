@@ -14,6 +14,23 @@
     <div class="main-content">
       <div class="left-panel">
         <div class="card">
+          <h2>Settings</h2>
+          <div class="settings-group">
+            <label for="provider-select">Provider:</label>
+            <select id="provider-select">
+              <option value="openai">OpenAI</option>
+              <option value="google">Google</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="mock">Mock</option>
+            </select>
+          </div>
+          <div class="settings-group">
+            <label for="api-key-input">API Key:</label>
+            <input type="password" id="api-key-input" placeholder="Enter your API key">
+          </div>
+          <button id="save-settings" class="summarize-btn">Save Settings</button>
+        </div>
+        <div class="card">
           <h2>Live Audio</h2>
           <div class="listen-mode">
             <span>Listen Mode</span>
@@ -60,11 +77,6 @@
     <div class="footer">
       <span id="status-text">Status: Inactive</span>
       <div id="live-dot" class="hidden"></div>
-    </div>
-    <div class="card troubleshooting">
-      <h2>Troubleshooting</h2>
-      <p><strong>Microphone Not Working?</strong> If you see a "not-allowed" error, you need to grant microphone permission. Go to your browser's site settings for this extension and set Microphone to "Allow".</p>
-      <p><strong>Tab Audio Issues?</strong> When "Tab Audio" is active, the sound from the tab is routed to the extension for transcription, so you won't hear it from your speakers. A transcript will appear when you stop recording.</p>
     </div>
   </div>
   <script src="popup.js"></script>

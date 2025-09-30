@@ -1,0 +1,6 @@
+Flask==2.3.2
+openai==0.28.0
+Flask-Cors==4.0.0
+google-generativeai
+Pillow
+requests
