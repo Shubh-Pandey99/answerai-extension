@@ -1,6 +1,6 @@
 # AI Meeting Assistant Extension
 
-This repository contains the source code for the AI Meeting Assistant browser extension and its backend service.
+This repository contains the source code for the AI Meeting Assistant browser extension and its backend service, powered by Google AI Studio.
 
 ## Backend Deployment to Vercel
 
@@ -10,52 +10,50 @@ Follow these steps to deploy the backend service to Vercel.
 
 - A GitHub account with this repository forked or cloned.
 - A Vercel account.
+- A Google AI Studio API key.
 
-### Deployment Steps
+### 1. Get Your Google AI Studio API Key
 
-1.  **Push to GitHub**: Make sure all the latest changes, including the `api` directory and `vercel.json` file, are pushed to your GitHub repository.
+1.  Go to **[Google AI Studio](https://aistudio.google.com/)**.
+2.  Sign in with your Google account.
+3.  Click on **"Get API key"** from the menu.
+4.  Click **"Create API key in new project"**.
+5.  Copy the generated API key. You will need this for the Vercel deployment.
+
+### 2. Deploy to Vercel
+
+1.  **Push to GitHub**: Make sure all the latest changes are pushed to your GitHub repository.
 
 2.  **Create a New Vercel Project**:
-    - Log in to your Vercel account.
-    - Click the "Add New..." button and select "Project".
+    - Log in to your Vercel account and go to your dashboard.
+    - Click "Add New..." and select "Project".
 
 3.  **Import Your Repository**:
-    - In the "Import Git Repository" section, find and select your GitHub repository for this project.
+    - Import your `answerai-extension` repository from GitHub.
 
 4.  **Configure the Project**:
-    - Vercel will ask you to select the **Root Directory**. Choose `answerai-extension` (the default selection) and click "Continue".
-    - Vercel will automatically detect that you are using Node.js.
-    - The build and output settings should be configured automatically based on the `vercel.json` file. No changes are needed here.
+    - **Root Directory**: Vercel should automatically select `answerai-extension`. If not, choose it from the list.
+    - **Environment Variables**:
+        - Add a new environment variable named `GOOGLE_API_KEY`.
+        - Paste the API key you got from Google AI Studio into the value field.
 
-5.  **Add Environment Variable**:
-    - Before deploying, you need to add your OpenAI API key as an environment variable.
-    - In the project settings, go to the "Environment Variables" section.
-    - Add a new variable with the name `OPENAI_API_KEY` and paste your secret key in the value field.
-    - Make sure to save it.
+5.  **Deploy**:
+    - Click the "Deploy" button. Vercel will build and deploy your backend.
 
-6.  **Deploy**:
-    - Click the "Deploy" button.
-    - Vercel will now build and deploy your backend service. This may take a few minutes.
+### 3. Verify Deployment
 
-### Verify Deployment
-
-Once the deployment is complete, Vercel will provide you with a production URL (e.g., `https://your-project-name.vercel.app`).
-
-To verify that the deployment was successful, open this URL in your browser. You should see the message:
+Once the deployment is complete, Vercel will provide you with a production URL. Open this URL in your browser, and you should see:
 `AI Meeting Assistant backend is running successfully!`
 
-### Update the Extension
+### 4. Update the Extension
 
-After a successful deployment, you need to update the extension to use your new backend URL.
+1.  **Update `popup.js` and `manifest.json`**:
+    - In both files, find the old Vercel URL and replace it with your new one.
 
-1.  **Update `popup.js`**:
-    - Open the `popup.js` file.
-    - Find all instances of the old URL (`https://3000-firebase-answerai-extension-1759171945157.cluster-73qgvk7hjjadkrjeyexca5ivva.cloudworkstations.dev`) and replace them with your new Vercel URL.
+2.  **Reload the Extension**:
+    - Go to `chrome://extensions`, find your extension, and click the reload button.
 
-2.  **Update `manifest.json`**:
-    - Open the `manifest.json` file.
-    - In the `host_permissions` section, replace the old URL with your new Vercel URL.
+## Troubleshooting
 
-After updating these files, reload the extension in your browser to apply the changes. The extension should now be communicating with your live backend on Vercel.
-
-**Important**: If your Vercel deployment shows a 404 error after you've made changes, ensure you have pushed the latest commits to your `main` branch on GitHub. Vercel automatically deploys new changes when you push to your repository.
+-   **Summarization fails**: If the extension isn't working, check the "Runtime Logs" in your Vercel dashboard. The most common issue is an incorrect or invalid `GOOGLE_API_KEY`.
+-   **Microphone/Capture Errors**: Refer to the previous troubleshooting sections for guidance on browser permissions.

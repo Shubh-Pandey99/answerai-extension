@@ -54,7 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
       askInput.value = event.results[0][0].transcript;
     };
     recognition.onerror = (event) => {
-      askInput.placeholder = 'Error listening.';
+      if (event.error === 'not-allowed') {
+        qqaResponse.textContent = 'Microphone permission denied. Please allow microphone access in your browser settings.';
+      } else {
+        askInput.placeholder = 'Error listening.';
+      }
     };
     recognition.onend = () => {
       askInput.placeholder = 'Ask anything...';
@@ -65,16 +69,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Screen capture functionality
   captureScreenBtn.addEventListener('click', () => {
-    chrome.tabs.captureVisibleTab({ format: 'png' }, (url) => {
-      if (url) {
-        screenshotUrl = url;
-        screenshotPreview.src = url;
-        screenshotPreview.classList.remove('hidden');
-        summarizeImageBtn.classList.remove('hidden');
-        captureScreenBtn.classList.add('hidden');
-      } else {
-        qqaResponse.textContent = 'Failed to capture screenshot.';
+    // Check if tab audio is currently being recorded
+    chrome.runtime.sendMessage({ type: 'get-state' }, (response) => {
+      if (response && response.isRecording) {
+        qqaResponse.textContent = 'Cannot capture screen while tab audio is being recorded.';
+        return;
       }
+
+      chrome.tabs.captureVisibleTab({ format: 'png' }, (url) => {
+        if (url) {
+          screenshotUrl = url;
+          screenshotPreview.src = url;
+          screenshotPreview.classList.remove('hidden');
+          summarizeImageBtn.classList.remove('hidden');
+          captureScreenBtn.classList.add('hidden');
+        } else {
+          qqaResponse.textContent = 'Failed to capture screenshot.';
+        }
+      });
     });
   });
 
@@ -116,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function getSummary(transcript) {
     qqaResponse.textContent = 'Summarizing...';
     try {
-      const res = await fetch('https://3000-firebase-answerai-extension-1759171945157.cluster-73qgvk7hjjadkrjeyexca5ivva.cloudworkstations.dev/api/answer', {
+      const res = await fetch('https://answerai-extension-3wvv.vercel.app/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript: `Summarize this: ${transcript}` })
@@ -131,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function getSummaryForImage(imageUrl) {
     qqaResponse.textContent = 'Analyzing image...';
     try {
-      const res = await fetch('https://3000-firebase-answerai-extension-1759171945157.cluster-73qgvk7hjjadkrjeyexca5ivva.cloudworkstations.dev/api/answer', {
+      const res = await fetch('https://answerai-extension-3wvv.vercel.app/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageUrl: imageUrl })

@@ -10,7 +10,7 @@
     "offscreen"
   ],
   "host_permissions": [
-    "https://3000-firebase-answerai-extension-1759171945157.cluster-73qgvk7hjjadkrjeyexca5ivva.cloudworkstations.dev/"
+    "https://answerai-extension-3wvv.vercel.app/"
   ],
   "background": {
     "service_worker": "background.js"
