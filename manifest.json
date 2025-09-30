@@ -3,6 +3,7 @@
   "name": "AI Meeting Assistant",
   "version": "1.0",
   "permissions": [
+    "storage",
     "tabs",
     "activeTab",
     "scripting",
