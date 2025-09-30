@@ -15,17 +15,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const providerSelect = document.getElementById('provider-select');
   const apiKeyInput = document.getElementById('api-key-input');
   const saveSettingsBtn = document.getElementById('save-settings');
+  const vercelUrlInput = document.getElementById('vercel-url-input');
   let screenshotUrl = null;
 
   // --- Initial State & Permissions ---
 
   // Load saved settings from chrome.storage
-  chrome.storage.local.get(['provider', 'apiKey'], (result) => {
+  chrome.storage.local.get(['provider', 'apiKey', 'vercelUrl'], (result) => {
     if (result.provider) {
       providerSelect.value = result.provider;
     }
     if (result.apiKey) {
       apiKeyInput.value = result.apiKey;
+    }
+    if (result.vercelUrl) {
+      vercelUrlInput.value = result.vercelUrl;
     }
   });
 
@@ -63,7 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
   saveSettingsBtn.addEventListener('click', () => {
     const provider = providerSelect.value;
     const apiKey = apiKeyInput.value;
-    chrome.storage.local.set({ provider, apiKey }, () => {
+    const vercelUrl = vercelUrlInput.value;
+    chrome.storage.local.set({ provider, apiKey, vercelUrl }, () => {
       const originalText = saveSettingsBtn.textContent;
       saveSettingsBtn.textContent = 'Saved!';
       setTimeout(() => {
@@ -178,8 +183,12 @@ document.addEventListener('DOMContentLoaded', () => {
   async function getSummary(transcript) {
     qqaResponse.textContent = 'Summarizing...';
     try {
-      const { provider, apiKey } = await new Promise(resolve => chrome.storage.local.get(['provider', 'apiKey'], resolve));
-      const res = await fetch('https://answerai-extension-twq4.vercel.app/api/answer', {
+      const { provider, apiKey, vercelUrl } = await new Promise(resolve => chrome.storage.local.get(['provider', 'apiKey', 'vercelUrl'], resolve));
+      if (!vercelUrl) {
+        qqaResponse.textContent = 'Please set the Vercel URL in the settings.';
+        return;
+      }
+      const res = await fetch(`${vercelUrl}/api/answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -198,8 +207,12 @@ document.addEventListener('DOMContentLoaded', () => {
   async function getSummaryForImage(imageUrl) {
     qqaResponse.textContent = 'Analyzing image...';
     try {
-      const { provider, apiKey } = await new Promise(resolve => chrome.storage.local.get(['provider', 'apiKey'], resolve));
-      const res = await fetch('https://answerai-extension-twq4.vercel.app/api/answer', {
+      const { provider, apiKey, vercelUrl } = await new Promise(resolve => chrome.storage.local.get(['provider', 'apiKey', 'vercelUrl'], resolve));
+      if (!vercelUrl) {
+        qqaResponse.textContent = 'Please set the Vercel URL in the settings.';
+        return;
+      }
+      const res = await fetch(`${vercelUrl}/api/answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -10,7 +10,7 @@
     "offscreen"
   ],
   "host_permissions": [
-    "https://answerai-extension-twq4.vercel.app/"
+    "https://*.vercel.app/"
   ],
   "background": {
     "service_worker": "background.js"
