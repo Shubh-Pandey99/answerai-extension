@@ -1,59 +1,57 @@
 # AI Meeting Assistant Extension
 
-This repository contains the source code for the AI Meeting Assistant browser extension and its backend service, powered by Google AI Studio.
+This repository contains the source code for the AI Meeting Assistant browser extension and its flexible backend service.
 
-## Backend Deployment to Vercel
+## Flexible Backend with AI Provider Switching
 
-Follow these steps to deploy the backend service to Vercel.
+The backend is designed to be flexible, allowing you to choose your preferred AI provider without changing any code. You can switch between **OpenAI**, **Google AI Studio**, or a **mock server** for testing.
 
-### Prerequisites
+### How It Works
 
-- A GitHub account with this repository forked or cloned.
-- A Vercel account.
-- A Google AI Studio API key.
+The backend reads an `AI_PROVIDER` environment variable that you set in your Vercel deployment. Based on the value of this variable (`openai`, `google`, or `mock`), it will automatically use the correct client and API key.
 
-### 1. Get Your Google AI Studio API Key
+## Deployment and Configuration
 
-1.  Go to **[Google AI Studio](https://aistudio.google.com/)**.
-2.  Sign in with your Google account.
-3.  Click on **"Get API key"** from the menu.
-4.  Click **"Create API key in new project"**.
-5.  Copy the generated API key. You will need this for the Vercel deployment.
+Follow these steps to deploy the backend and configure your chosen AI provider.
+
+### 1. Push to GitHub
+
+**This is the most important step.** After any code changes (like the ones we just made), you **must** push the new code to your GitHub repository. Vercel will only deploy the code that is on GitHub.
 
 ### 2. Deploy to Vercel
 
-1.  **Push to GitHub**: Make sure all the latest changes are pushed to your GitHub repository.
+1.  Create a new project on Vercel and link it to your GitHub repository.
+2.  When prompted for a **Root Directory**, select `answerai-extension`.
 
-2.  **Create a New Vercel Project**:
-    - Log in to your Vercel account and go to your dashboard.
-    - Click "Add New..." and select "Project".
+### 3. Configure Environment Variables in Vercel
 
-3.  **Import Your Repository**:
-    - Import your `answerai-extension` repository from GitHub.
+This is the most important step. Go to your Vercel project's **Settings > Environment Variables** and add the following:
 
-4.  **Configure the Project**:
-    - **Root Directory**: Vercel should automatically select `answerai-extension`. If not, choose it from the list.
-    - **Environment Variables**:
-        - Add a new environment variable named `GOOGLE_API_KEY`.
-        - Paste the API key you got from Google AI Studio into the value field.
+**1. Choose Your Provider:**
+-   `AI_PROVIDER`: Set this to `openai`, `google`, or `mock`.
 
-5.  **Deploy**:
-    - Click the "Deploy" button. Vercel will build and deploy your backend.
+**2. Add the Corresponding API Key (if not using mock):**
+-   If `AI_PROVIDER` is `openai`, you must also add:
+    -   `OPENAI_API_KEY`: Your OpenAI API key.
+-   If `AI_PROVIDER` is `google`, you must also add:
+    -   `GOOGLE_API_KEY`: Your Google AI Studio API key. (Ensure your Google Cloud project has billing enabled).
 
-### 3. Verify Deployment
+**Example Configurations:**
 
-Once the deployment is complete, Vercel will provide you with a production URL. Open this URL in your browser, and you should see:
-`AI Meeting Assistant backend is running successfully!`
+-   **To use OpenAI:**
+    -   `AI_PROVIDER`: `openai`
+    -   `OPENAI_API_KEY`: `sk-...`
+-   **To use Google AI:**
+    -   `AI_PROVIDER`: `google`
+    -   `GOOGLE_API_KEY`: `AIza...`
+-   **To use the Mock Server:**
+    -   `AI_PROVIDER`: `mock` (no API key needed)
 
-### 4. Update the Extension
+### 4. Redeploy and Verify
 
-1.  **Update `popup.js` and `manifest.json`**:
-    - In both files, find the old Vercel URL and replace it with your new one.
+After setting your environment variables, Vercel will automatically trigger a new deployment. Once it's complete, open your Vercel URL. You will see a message confirming which provider is active, for example:
+`AI Meeting Assistant backend is running with the "openai" provider.`
 
-2.  **Reload the Extension**:
-    - Go to `chrome://extensions`, find your extension, and click the reload button.
+### 5. Update the Extension
 
-## Troubleshooting
-
--   **Summarization fails**: If the extension isn't working, check the "Runtime Logs" in your Vercel dashboard. The most common issue is an incorrect or invalid `GOOGLE_API_KEY`.
--   **Microphone/Capture Errors**: Refer to the previous troubleshooting sections for guidance on browser permissions.
+Finally, update the `popup.js` and `manifest.json` files with your new Vercel URL and reload the extension in Chrome. It will now be connected to your flexibly configured backend.
