@@ -1,0 +1,8 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100    45    0     0  100    45      0    623 --:--:-- --:--:-- --:--:--   625
+HTTP/2 404 
+x-google-gateway-error: NO_HOST_ENTRY
+content-length: 0
+date: Tue, 30 Sep 2025 16:38:43 GMT
+
