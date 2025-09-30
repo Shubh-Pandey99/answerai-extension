@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function getSummary(transcript) {
     qqaResponse.textContent = 'Summarizing...';
     try {
-      const res = await fetch('https://answerai-extension-3wvv.vercel.app/api/answer', {
+      const res = await fetch('https://answerai-extension-twq4.vercel.app/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript: `Summarize this: ${transcript}` })
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function getSummaryForImage(imageUrl) {
     qqaResponse.textContent = 'Analyzing image...';
     try {
-      const res = await fetch('https://answerai-extension-3wvv.vercel.app/api/answer', {
+      const res = await fetch('https://answerai-extension-twq4.vercel.app/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageUrl: imageUrl })
