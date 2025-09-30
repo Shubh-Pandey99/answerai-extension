@@ -23,6 +23,7 @@ Follow these steps to deploy the backend service to Vercel.
     - In the "Import Git Repository" section, find and select your GitHub repository for this project.
 
 4.  **Configure the Project**:
+    - Vercel will ask you to select the **Root Directory**. Choose `answerai-extension` (the default selection) and click "Continue".
     - Vercel will automatically detect that you are using Node.js.
     - The build and output settings should be configured automatically based on the `vercel.json` file. No changes are needed here.
 
@@ -56,3 +57,5 @@ After a successful deployment, you need to update the extension to use your new 
     - In the `host_permissions` section, replace the old URL with your new Vercel URL.
 
 After updating these files, reload the extension in your browser to apply the changes. The extension should now be communicating with your live backend on Vercel.
+
+**Important**: If your Vercel deployment shows a 404 error after you've made changes, ensure you have pushed the latest commits to your `main` branch on GitHub. Vercel automatically deploys new changes when you push to your repository.
