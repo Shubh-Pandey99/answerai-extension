@@ -21,6 +21,48 @@ CORS(app)
 def is_valid_url(url):
     return re.match(r'^https?://', url)
 
+async def get_emergent_response(transcript, image_url=None, use_gpt5=False):
+    """Enhanced AI response using Emergent integrations with GPT-5 support"""
+    try:
+        emergent_key = os.environ.get('EMERGENT_LLM_KEY')
+        if not emergent_key:
+            return {"error": "Emergent LLM key not configured"}
+        
+        # Initialize LlmChat with GPT-5 or GPT-4o
+        model = "gpt-5" if use_gpt5 else "gpt-4o"
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"meeting_assistant_{hash(transcript or image_url or 'session')}",
+            system_message="You are an AI meeting assistant. Provide helpful, concise, and accurate responses to questions about meetings, transcripts, and images. Format your responses clearly and professionally."
+        ).with_model("openai", model)
+        
+        # Handle text input
+        if transcript:
+            user_message = UserMessage(text=transcript)
+            response = await chat.send_message(user_message)
+            return {"answer": response}
+        
+        # Handle image analysis (fallback to OpenAI for now)
+        elif image_url:
+            client = OpenAI(api_key=emergent_key)
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Analyze this image and describe what you see. If it's a meeting screenshot, identify key points, text, or visual elements."},
+                        {"type": "image_url", "image_url": {"url": image_url}},
+                    ],
+                }]
+            )
+            return {"answer": response.choices[0].message.content}
+            
+        return {"error": "No input provided"}
+        
+    except Exception as e:
+        print(f"Error with Emergent integration: {e}")
+        return {"error": f"Emergent AI processing failed: {str(e)}"}
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
