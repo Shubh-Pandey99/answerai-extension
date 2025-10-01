@@ -97,7 +97,11 @@ def get_answer():
         elif provider == 'mock':
             return jsonify({"answer": "Enhanced mock response with GPT-5 simulation - meeting analysis complete."})
 
+        # Legacy OpenAI provider
         elif provider == 'openai':
+            if not api_key:
+                return jsonify({"error": "API key is required for OpenAI provider."}), 400
+                
             client = OpenAI(api_key=api_key)
             if transcript:
                 response = client.chat.completions.create(
