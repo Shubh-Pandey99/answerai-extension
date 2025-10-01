@@ -19,12 +19,32 @@ document.addEventListener('DOMContentLoaded', () => {
   let fullTranscript = '';
   let screenshotUrl = null;
 
+  const modelSelect = document.getElementById('model-select');
+
   // Load settings
-  chrome.storage.local.get(['provider', 'apiKey', 'vercelUrl'], (res) => {
+  chrome.storage.local.get(['provider', 'apiKey', 'vercelUrl', 'model'], (res) => {
     if (res.provider) providerSelect.value = res.provider;
+    else providerSelect.value = 'emergent'; // Default to GPT-5
     if (res.apiKey) apiKeyInput.value = res.apiKey;
     if (res.vercelUrl) vercelUrlInput.value = res.vercelUrl;
+    if (res.model) modelSelect.value = res.model;
+    else modelSelect.value = 'gpt-5'; // Default to GPT-5
+    
+    updateApiKeyVisibility();
   });
+  
+  // Show/hide API key input based on provider
+  function updateApiKeyVisibility() {
+    const provider = providerSelect.value;
+    const apiKeyGroup = apiKeyInput.closest('.settings-group');
+    if (provider === 'emergent' || provider === 'mock') {
+      apiKeyGroup.style.display = 'none';
+    } else {
+      apiKeyGroup.style.display = 'block';
+    }
+  }
+  
+  providerSelect.addEventListener('change', updateApiKeyVisibility);
 
   const waveformBars = document.querySelectorAll('.waveform .bar');
 
