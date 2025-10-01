@@ -15,32 +15,32 @@
       "status": "healthy",
       "version": "2.0.0"
     },
-    "timestamp": "2025-10-01 09:58:01"
+    "timestamp": "2025-10-01 10:00:08"
   },
   {
     "test": "Environment Variables",
-    "success": false,
-    "details": "EMERGENT_LLM_KEY not properly configured: None",
+    "success": true,
+    "details": "EMERGENT_LLM_KEY properly configured: sk-emergent-46b...",
     "response_data": null,
-    "timestamp": "2025-10-01 09:58:02"
+    "timestamp": "2025-10-01 10:00:08"
   },
   {
     "test": "Emergent GPT-5",
     "success": true,
-    "details": "Response length: 1728 chars",
+    "details": "Response length: 1647 chars",
     "response_data": {
-      "answer_preview": "AI improves efficiency, clarity, and follow\u2011through across the entire meeting lifecycle.\n\nBefore the..."
+      "answer_preview": "Key benefits of using AI in business meetings:\n\n- Faster preparation: Auto-generate agendas, brief p..."
     },
-    "timestamp": "2025-10-01 09:58:22"
+    "timestamp": "2025-10-01 10:00:32"
   },
   {
     "test": "Emergent GPT-4o",
     "success": true,
-    "details": "Response length: 222 chars",
+    "details": "Response length: 341 chars",
     "response_data": {
-      "answer_preview": "The main points from the meeting are as follows:\n1. John presented the quarterly sales figures.\n2. M..."
+      "answer_preview": "Here is the summary of the meeting:\n\n1. **Quarterly Sales Figures**: John provided an overview and a..."
     },
-    "timestamp": "2025-10-01 09:58:24"
+    "timestamp": "2025-10-01 10:00:35"
   },
   {
     "test": "Mock Provider",
@@ -49,16 +49,16 @@
     "response_data": {
       "answer": "Enhanced mock response with GPT-5 simulation - meeting analysis complete."
     },
-    "timestamp": "2025-10-01 09:58:24"
+    "timestamp": "2025-10-01 10:00:36"
   },
   {
     "test": "Streaming Endpoint",
     "success": true,
-    "details": "Received 21 chunks, total content: 457 chars",
+    "details": "Received 21 chunks, total content: 439 chars",
     "response_data": {
-      "content_preview": "Artificial intelligence (AI) is the field of computer science focused on building systems that can p..."
+      "content_preview": "Artificial intelligence (AI) is the field of creating computer systems that can perform tasks that t..."
     },
-    "timestamp": "2025-10-01 09:58:43"
+    "timestamp": "2025-10-01 10:00:50"
   },
   {
     "test": "Error Handling - No Input",
@@ -67,7 +67,7 @@
     "response_data": {
       "error": "No transcript or image URL provided."
     },
-    "timestamp": "2025-10-01 09:58:44"
+    "timestamp": "2025-10-01 10:00:51"
   },
   {
     "test": "Error Handling - Invalid Provider",
@@ -76,7 +76,7 @@
     "response_data": {
       "error": "Invalid provider specified. Use 'emergent', 'openai', 'google', 'openrouter', or 'mock'."
     },
-    "timestamp": "2025-10-01 09:58:44"
+    "timestamp": "2025-10-01 10:00:51"
   },
   {
     "test": "Image Analysis",
@@ -85,13 +85,13 @@
     "response_data": {
       "error": "Emergent AI processing failed: Error code: 401 - {'error': {'message': 'Incorrect API key provided: sk-emerg******************2F61. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
     },
-    "timestamp": "2025-10-01 09:58:45"
+    "timestamp": "2025-10-01 10:00:52"
   },
   {
     "test": "Performance - Response Time",
     "success": true,
     "details": "Response time: 0.00s (acceptable)",
     "response_data": null,
-    "timestamp": "2025-10-01 09:58:46"
+    "timestamp": "2025-10-01 10:00:53"
   }
 ]
