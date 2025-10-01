@@ -9,11 +9,38 @@ import re
 import os
 import asyncio
 import json
+import time
+import logging
 from dotenv import load_dotenv
 from emergentintegrations.llm.chat import LlmChat, UserMessage
+from functools import wraps
 
 # Load environment variables
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def retry_with_backoff(max_retries=3, base_delay=1):
+    """Decorator for automatic retry with exponential backoff"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        logger.error(f"Final attempt failed for {func.__name__}: {e}")
+                        raise e
+                    
+                    delay = base_delay * (2 ** attempt)  # Exponential backoff
+                    logger.warning(f"Attempt {attempt + 1} failed for {func.__name__}: {e}. Retrying in {delay}s...")
+                    await asyncio.sleep(delay)
+            return None
+        return wrapper
+    return decorator
 
 app = Flask(__name__)
 CORS(app)
