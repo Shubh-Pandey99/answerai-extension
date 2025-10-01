@@ -34,33 +34,146 @@ This repository contains the source code for the AI Meeting Assistant browser ex
 - **Health Monitoring**: System status and diagnostics endpoint
 - **Enhanced Logging**: Comprehensive error tracking and debugging
 
-## Backend Setup: Python & Flask
+## 🛠️ Backend Setup: Enhanced Python & Flask
 
-The backend is a lightweight Flask application that acts as a proxy to the various AI provider APIs. It receives requests from the extension, forwards them to the selected provider with the user's API key, and returns the response.
+The backend is an enhanced Flask application with **GPT-5 integration**, streaming capabilities, and advanced error handling. It acts as an intelligent proxy to various AI providers with built-in noise suppression and professional meeting analysis.
 
-## Deployment to Vercel
+### **Prerequisites**
+```bash
+Python 3.8+
+pip (Python package manager)
+Git
+```
 
-Follow these steps to deploy the Python backend to Vercel.
+### **Local Development Setup**
+```bash
+# 1. Clone the repository
+git clone <your-repo-url>
+cd ai-meeting-assistant
 
-### 1. Push to GitHub
+# 2. Install Python dependencies
+pip install -r requirements.txt
 
-Ensure all the latest changes, including `api/index.py`, `requirements.txt`, and `vercel.json`, are pushed to your GitHub repository.
+# 3. Set up environment variables
+echo "EMERGENT_LLM_KEY=sk-emergent-97c1bA4Dc3872D68eF" > .env
 
-### 2. Deploy to Vercel
+# 4. Run the development server
+python api/index.py
 
-1.  **Create a New Vercel Project**:
-    - Log in to your Vercel account and create a new project linked to your GitHub repository.
+# 5. Test the API
+curl http://localhost:5000/api/health
+```
 
-2.  **Configure the Project**:
-    - Vercel should automatically detect the project settings from your `vercel.json` file. No special configuration is needed.
+## 🚀 Deployment Options
 
-3.  **Deploy**:
-    - Click the "Deploy" button. Vercel will install the Python packages from `requirements.txt` and deploy your Flask application.
+### **Option 1: Vercel (Recommended)**
+**✅ Best for**: Free hosting, automatic deployments, global CDN
 
-### 3. Verify Deployment
+#### **Step 1: Prepare Repository**
+```bash
+# Ensure all files are committed
+git add .
+git commit -m "Enhanced AI Meeting Assistant v2.0"
+git push origin main
+```
 
-Once the deployment is complete, open the production URL provided by Vercel. You should see the message:
-`AI Meeting Assistant Python backend is running successfully!`
+#### **Step 2: Deploy to Vercel**
+1. **Create Vercel Account**: Sign up at [vercel.com](https://vercel.com)
+2. **Import Project**: 
+   - Click "New Project" 
+   - Import from GitHub/GitLab
+   - Select your repository
+3. **Configure Environment**:
+   - Add environment variable: `EMERGENT_LLM_KEY` = `sk-emergent-97c1bA4Dc3872D68eF`
+4. **Deploy**: Click "Deploy" - Vercel auto-detects Flask configuration
+
+#### **Step 3: Verify Deployment**
+```bash
+# Test health endpoint
+curl https://your-app.vercel.app/api/health
+
+# Expected response:
+{
+  "status": "healthy",
+  "service": "AI Meeting Assistant Enhanced Backend",
+  "version": "2.0.0", 
+  "features": ["GPT-5", "Streaming", "Multi-Provider", "Enhanced Audio Processing"],
+  "emergent_integration": "enabled"
+}
+```
+
+### **Option 2: Railway**
+**✅ Best for**: Easy database integration, persistent storage
+
+```bash
+# 1. Install Railway CLI
+npm install -g @railway/cli
+
+# 2. Login and deploy
+railway login
+railway init
+railway up
+
+# 3. Set environment variables
+railway variables set EMERGENT_LLM_KEY=sk-emergent-97c1bA4Dc3872D68eF
+```
+
+### **Option 3: Google Cloud Run**
+**✅ Best for**: Enterprise deployment, auto-scaling
+
+```bash
+# 1. Create Dockerfile (already included)
+# 2. Build and deploy
+gcloud run deploy ai-meeting-assistant \
+  --source . \
+  --platform managed \
+  --region us-central1 \
+  --set-env-vars EMERGENT_LLM_KEY=sk-emergent-97c1bA4Dc3872D68eF
+```
+
+### **Option 4: Heroku**
+**✅ Best for**: Traditional deployment, add-ons
+
+```bash
+# 1. Create Heroku app
+heroku create your-meeting-assistant
+
+# 2. Set environment variables
+heroku config:set EMERGENT_LLM_KEY=sk-emergent-97c1bA4Dc3872D68eF
+
+# 3. Deploy
+git push heroku main
+```
+
+## 🔐 Environment Configuration
+
+### **Required Environment Variables**
+```bash
+# Emergent LLM Key (provided automatically)
+EMERGENT_LLM_KEY=sk-emergent-97c1bA4Dc3872D68eF
+
+# Optional: Custom API keys (if not using Emergent)
+OPENAI_API_KEY=your_openai_key_here
+GOOGLE_API_KEY=your_google_key_here
+OPENROUTER_API_KEY=your_openrouter_key_here
+```
+
+### **Vercel Configuration (vercel.json)**
+```json
+{
+  "functions": {
+    "api/index.py": {
+      "runtime": "@vercel/python"
+    }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.py"
+    }
+  ]
+}
+```
 
 ## How to Use the Extension in Chrome
 
