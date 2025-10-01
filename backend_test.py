@@ -252,12 +252,27 @@ class BackendTester:
     def test_environment_variables(self):
         """Test environment variable configuration"""
         try:
-            # Check if EMERGENT_LLM_KEY is set
-            emergent_key = os.environ.get('EMERGENT_LLM_KEY')
-            if emergent_key and emergent_key.startswith('sk-emergent-'):
-                self.log_result("Environment Variables", True, f"EMERGENT_LLM_KEY properly configured: {emergent_key[:15]}...")
+            # Load from .env file in api directory
+            env_file_path = "/app/api/.env"
+            if os.path.exists(env_file_path):
+                with open(env_file_path, 'r') as f:
+                    for line in f:
+                        if line.startswith('EMERGENT_LLM_KEY='):
+                            emergent_key = line.split('=', 1)[1].strip()
+                            if emergent_key and emergent_key.startswith('sk-emergent-'):
+                                self.log_result("Environment Variables", True, f"EMERGENT_LLM_KEY properly configured: {emergent_key[:15]}...")
+                                return
+                            else:
+                                self.log_result("Environment Variables", False, f"EMERGENT_LLM_KEY not properly configured: {emergent_key}")
+                                return
+                self.log_result("Environment Variables", False, "EMERGENT_LLM_KEY not found in .env file")
             else:
-                self.log_result("Environment Variables", False, f"EMERGENT_LLM_KEY not properly configured: {emergent_key}")
+                # Check if EMERGENT_LLM_KEY is set in environment
+                emergent_key = os.environ.get('EMERGENT_LLM_KEY')
+                if emergent_key and emergent_key.startswith('sk-emergent-'):
+                    self.log_result("Environment Variables", True, f"EMERGENT_LLM_KEY properly configured: {emergent_key[:15]}...")
+                else:
+                    self.log_result("Environment Variables", False, f"EMERGENT_LLM_KEY not properly configured: {emergent_key}")
                 
         except Exception as e:
             self.log_result("Environment Variables", False, f"Exception: {str(e)}")
