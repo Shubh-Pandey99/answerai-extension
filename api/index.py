@@ -107,7 +107,7 @@ def get_answer():
                 return jsonify({"answer": response.choices[0].message.content})
             elif image_url:
                 response = client.chat.completions.create(
-                    model="gpt-4-vision-preview",
+                    model="gpt-4o",
                     messages=[{
                         "role": "user",
                         "content": [
