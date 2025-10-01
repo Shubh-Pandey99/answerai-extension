@@ -15,7 +15,17 @@ chrome.runtime.onMessage.addListener(async (message) => {
     source.connect(workletNode).connect(audioCtx.destination);
 
     workletNode.port.onmessage = (event) => {
-      chrome.runtime.sendMessage({ type: 'audio-data', target: 'background', data: event.data });
+      const audioData = event.data;
+      
+      // Send enhanced audio data with additional metrics
+      chrome.runtime.sendMessage({ 
+        type: 'audio-data', 
+        target: 'background', 
+        data: audioData.audio || audioData, // Backward compatibility
+        rms: audioData.rms || 0,
+        timestamp: audioData.timestamp || Date.now(),
+        enhanced: true
+      });
     };
   } else if (message.type === 'stop-recording') {
     // This is a bit of a hack, as there's no direct way to stop the worklet.
