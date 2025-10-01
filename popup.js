@@ -160,29 +160,71 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- API Call Functions ---
-  async function getSummary(transcript) {
-    qqaResponse.textContent = 'Summarizing...';
-    try {
-      const { provider, apiKey, vercelUrl } = await new Promise(resolve => chrome.storage.local.get(['provider', 'apiKey', 'vercelUrl'], resolve));
-      if (!vercelUrl) {
-        qqaResponse.textContent = 'Please set the Vercel URL in the settings.';
-        return;
-      }
-      const res = await fetch(`${vercelUrl}/api/answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transcript: `Summarize this: ${transcript}`,
-          provider: provider || 'openai',
-          apiKey: apiKey || ''
-        })
-      });
-      const data = await res.json();
-      qqaResponse.textContent = data.answer || 'No summary received.';
-    } catch (error) {
-      qqaResponse.textContent = 'Error summarizing transcript.';
+  // --- Enhanced API Call Functions ---
+  async function makeApiCall(payload, retries = 3) {
+    const { provider, apiKey, vercelUrl, model } = await new Promise(resolve => 
+      chrome.storage.local.get(['provider', 'apiKey', 'vercelUrl', 'model'], resolve)
+    );
+    
+    if (!vercelUrl) {
+      throw new Error('Please set the Vercel URL in the settings.');
     }
+    
+    const useGPT5 = model === 'gpt-5';
+    const requestPayload = {
+      ...payload,
+      provider: provider || 'emergent',
+      apiKey: apiKey || '',
+      useGPT5: useGPT5
+    };
+    
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const res = await fetch(`${vercelUrl}/api/answer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestPayload)
+        });
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        const data = await res.json();
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        return data;
+      } catch (error) {
+        if (attempt === retries) {
+          throw error;
+        }
+        // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+      }
+    }
+  }
+  
+  async function getSummary(transcript) {
+    qqaResponse.textContent = 'Analyzing with GPT-5...';
+    try {
+      const data = await makeApiCall({
+        transcript: `Please provide a concise summary with key points and action items from this meeting transcript: ${transcript}`
+      });
+      qqaResponse.innerHTML = formatResponse(data.answer || 'No summary received.');
+    } catch (error) {
+      qqaResponse.textContent = `Error: ${error.message}`;
+      console.error('Summary error:', error);
+    }
+  }
+  
+  function formatResponse(text) {
+    // Basic formatting for better readability
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
   }
 
   async function getSummaryForImage(imageUrl) {
