@@ -228,26 +228,30 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function getSummaryForImage(imageUrl) {
-    qqaResponse.textContent = 'Analyzing image...';
+    qqaResponse.textContent = 'Analyzing image with GPT-5...';
     try {
-      const { provider, apiKey, vercelUrl } = await new Promise(resolve => chrome.storage.local.get(['provider', 'apiKey', 'vercelUrl'], resolve));
-      if (!vercelUrl) {
-        qqaResponse.textContent = 'Please set the Vercel URL in the settings.';
-        return;
-      }
-      const res = await fetch(`${vercelUrl}/api/answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageUrl,
-          provider: provider || 'openai',
-          apiKey: apiKey || ''
-        })
-      });
-      const data = await res.json();
-      qqaResponse.textContent = data.answer || 'No analysis received.';
+      const data = await makeApiCall({ imageUrl });
+      qqaResponse.innerHTML = formatResponse(data.answer || 'No analysis received.');
     } catch (error) {
-      qqaResponse.textContent = 'Error analyzing image.';
+      qqaResponse.textContent = `Error: ${error.message}`;
+      console.error('Image analysis error:', error);
     }
   }
+  
+  // Enhanced Q&A functionality
+  askInput.addEventListener('keypress', async (e) => {
+    if (e.key === 'Enter' && askInput.value.trim()) {
+      const question = askInput.value.trim();
+      const context = fullTranscript ? `Context: ${fullTranscript}\n\nQuestion: ${question}` : question;
+      
+      qqaResponse.textContent = 'Getting AI response...';
+      try {
+        const data = await makeApiCall({ transcript: context });
+        qqaResponse.innerHTML = formatResponse(data.answer || 'No response received.');
+        askInput.value = '';
+      } catch (error) {
+        qqaResponse.textContent = `Error: ${error.message}`;
+      }
+    }
+  });
 });
