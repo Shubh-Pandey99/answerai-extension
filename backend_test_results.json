@@ -1,0 +1,97 @@
+[
+  {
+    "test": "Health Check",
+    "success": true,
+    "details": "All health check fields present and correct",
+    "response_data": {
+      "emergent_integration": "enabled",
+      "features": [
+        "GPT-5",
+        "Streaming",
+        "Multi-Provider",
+        "Enhanced Audio Processing"
+      ],
+      "service": "AI Meeting Assistant Enhanced Backend",
+      "status": "healthy",
+      "version": "2.0.0"
+    },
+    "timestamp": "2025-10-01 09:58:01"
+  },
+  {
+    "test": "Environment Variables",
+    "success": false,
+    "details": "EMERGENT_LLM_KEY not properly configured: None",
+    "response_data": null,
+    "timestamp": "2025-10-01 09:58:02"
+  },
+  {
+    "test": "Emergent GPT-5",
+    "success": true,
+    "details": "Response length: 1728 chars",
+    "response_data": {
+      "answer_preview": "AI improves efficiency, clarity, and follow\u2011through across the entire meeting lifecycle.\n\nBefore the..."
+    },
+    "timestamp": "2025-10-01 09:58:22"
+  },
+  {
+    "test": "Emergent GPT-4o",
+    "success": true,
+    "details": "Response length: 222 chars",
+    "response_data": {
+      "answer_preview": "The main points from the meeting are as follows:\n1. John presented the quarterly sales figures.\n2. M..."
+    },
+    "timestamp": "2025-10-01 09:58:24"
+  },
+  {
+    "test": "Mock Provider",
+    "success": true,
+    "details": "Mock response received",
+    "response_data": {
+      "answer": "Enhanced mock response with GPT-5 simulation - meeting analysis complete."
+    },
+    "timestamp": "2025-10-01 09:58:24"
+  },
+  {
+    "test": "Streaming Endpoint",
+    "success": true,
+    "details": "Received 21 chunks, total content: 457 chars",
+    "response_data": {
+      "content_preview": "Artificial intelligence (AI) is the field of computer science focused on building systems that can p..."
+    },
+    "timestamp": "2025-10-01 09:58:43"
+  },
+  {
+    "test": "Error Handling - No Input",
+    "success": true,
+    "details": "Correctly returned 400 error for missing input",
+    "response_data": {
+      "error": "No transcript or image URL provided."
+    },
+    "timestamp": "2025-10-01 09:58:44"
+  },
+  {
+    "test": "Error Handling - Invalid Provider",
+    "success": true,
+    "details": "Correctly returned 400 error for invalid provider",
+    "response_data": {
+      "error": "Invalid provider specified. Use 'emergent', 'openai', 'google', 'openrouter', or 'mock'."
+    },
+    "timestamp": "2025-10-01 09:58:44"
+  },
+  {
+    "test": "Image Analysis",
+    "success": true,
+    "details": "Image analysis endpoint properly handles errors",
+    "response_data": {
+      "error": "Emergent AI processing failed: Error code: 401 - {'error': {'message': 'Incorrect API key provided: sk-emerg******************2F61. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    },
+    "timestamp": "2025-10-01 09:58:45"
+  },
+  {
+    "test": "Performance - Response Time",
+    "success": true,
+    "details": "Response time: 0.00s (acceptable)",
+    "response_data": null,
+    "timestamp": "2025-10-01 09:58:46"
+  }
+]
