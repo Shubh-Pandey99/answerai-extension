@@ -123,10 +123,13 @@ def get_answer():
                 return jsonify({"answer": response.choices[0].message.content})
 
         elif provider == 'openrouter':
+            if not api_key:
+                return jsonify({"error": "API key is required for OpenRouter provider."}), 400
+                
             client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
             if transcript:
                 response = client.chat.completions.create(
-                    model="openai/gpt-3.5-turbo",
+                    model="openai/gpt-4o",
                     messages=[{"role": "user", "content": transcript}],
                 )
                 return jsonify({"answer": response.choices[0].message.content})
