@@ -1,15 +1,38 @@
-# AI Meeting Assistant Extension
+# AI Meeting Assistant Extension (Enhanced with GPT-5)
 
-This repository contains the source code for the AI Meeting Assistant browser extension and its Python backend service. The extension is designed to help you transcribe, summarize, and ask questions about live audio, screen captures, and more, using your preferred AI provider.
+This repository contains the source code for the AI Meeting Assistant browser extension and its enhanced Python backend service. The extension is designed to help you transcribe, summarize, and ask questions about live audio, screen captures, and more, using cutting-edge AI providers including **GPT-5**.
 
-## Features
+## 🚀 Enhanced Features (v2.0.0)
 
-- **Multi-Provider Support**: Use API keys from OpenAI, Google, or OpenRouter.
-- **Mock Provider**: Test the extension's functionality without needing a real API key.
-- **Live Transcription**: Capture and transcribe audio directly from your current browser tab.
-- **Screen Capture Analysis**: Take a screenshot of the current tab and get an AI-powered summary.
-- **Real-time Q&A**: Ask questions about the transcribed text and get instant answers.
-- **Summarization**: Get a concise summary of the entire conversation.
+### **🤖 AI-Powered Core**
+- **🔥 GPT-5 Integration**: Zero-setup access via Emergent LLM key - no API key required!
+- **Multi-Provider Support**: GPT-5 (Emergent), OpenAI, Google Gemini 2.0, OpenRouter
+- **Smart Model Selection**: Choose between GPT-5, GPT-4o, and GPT-4o-mini
+- **Enhanced Responses**: Professional meeting analysis with structured outputs
+
+### **🎵 Advanced Audio Processing**
+- **Live Transcription**: Real-time audio capture from browser tabs with enhanced accuracy
+- **Noise Suppression**: Built-in audio enhancement with volume normalization
+- **Dual Audio Sources**: Tab audio capture + microphone input support
+- **Enhanced Waveform**: Real-time visual feedback with audio quality metrics
+
+### **📸 Smart Screen Capture**
+- **Intelligent Analysis**: GPT-5 powered screenshot interpretation 
+- **Visual Content Understanding**: Analyze whiteboards, diagrams, code snippets, presentations
+- **Instant OCR**: Extract and analyze text from captured images
+- **Meeting Screenshot Intelligence**: Identify key visual elements and action items
+
+### **💬 Real-time Intelligence**
+- **Context-Aware Q&A**: Ask questions with full meeting context
+- **Auto-Summarization**: Generate structured meeting notes with key points and action items
+- **Enhanced Error Handling**: Auto-retry with exponential backoff (3 attempts)
+- **Professional Formatting**: Bold/italic text rendering in responses
+
+### **⚡ Reliability & Performance**
+- **Network Resilience**: Automatic reconnection on failures
+- **Streaming Responses**: Real-time AI response delivery
+- **Health Monitoring**: System status and diagnostics endpoint
+- **Enhanced Logging**: Comprehensive error tracking and debugging
 
 ## Backend Setup: Python & Flask
 
