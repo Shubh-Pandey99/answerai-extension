@@ -71,15 +71,12 @@ def catch_all(path):
 @app.route('/api/answer', methods=['POST'])
 def get_answer():
     data = request.get_json()
-    provider = data.get('provider')
+    provider = data.get('provider', 'emergent')  # Default to emergent
     api_key = data.get('apiKey')
     transcript = data.get('transcript')
     image_url = data.get('imageUrl')
-
-    if not provider:
-        return jsonify({"error": "No provider specified."}), 400
-    if not api_key and provider != 'mock':
-        return jsonify({"error": "API key is required."}), 400
+    use_gpt5 = data.get('useGPT5', True)  # Default to GPT-5
+    
     if not transcript and not image_url:
         return jsonify({"error": "No transcript or image URL provided."}), 400
     if image_url and not is_valid_url(image_url):
