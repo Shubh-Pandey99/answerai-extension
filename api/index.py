@@ -137,13 +137,16 @@ def get_answer():
                 return jsonify({"error": "OpenRouter provider does not support image analysis."}), 400
 
         elif provider == 'google':
+            if not api_key:
+                return jsonify({"error": "API key is required for Google provider."}), 400
+                
             genai.configure(api_key=api_key)
             if transcript:
-                model = genai.GenerativeModel('gemini-pro')
+                model = genai.GenerativeModel('gemini-2.0-flash')
                 response = model.generate_content(transcript)
                 return jsonify({"answer": response.text})
             elif image_url:
-                model = genai.GenerativeModel('gemini-pro-vision')
+                model = genai.GenerativeModel('gemini-2.0-flash')
                 response = requests.get(image_url)
                 img = Image.open(BytesIO(response.content))
                 response = model.generate_content(img)
