@@ -101,7 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const provider = providerSelect.value;
     const apiKey = apiKeyInput.value;
     const vercelUrl = vercelUrlInput.value;
-    chrome.storage.local.set({ provider, apiKey, vercelUrl }, () => {
+    const model = modelSelect.value;
+    chrome.storage.local.set({ provider, apiKey, vercelUrl, model }, () => {
       saveSettingsBtn.textContent = 'Saved!';
       setTimeout(() => { saveSettingsBtn.textContent = 'Save Settings'; }, 1500);
     });
