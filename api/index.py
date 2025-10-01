@@ -83,8 +83,19 @@ def get_answer():
         return jsonify({"error": "Invalid image URL provided."}), 400
 
     try:
-        if provider == 'mock':
-            return jsonify({"answer": "This is a mock response for testing."})
+        # Enhanced Emergent provider (Primary)
+        if provider in ['emergent', 'gpt5', 'openai-emergent']:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(get_emergent_response(transcript, image_url, use_gpt5))
+            loop.close()
+            if "error" in result:
+                return jsonify(result), 500
+            return jsonify(result)
+            
+        # Mock provider
+        elif provider == 'mock':
+            return jsonify({"answer": "Enhanced mock response with GPT-5 simulation - meeting analysis complete."})
 
         elif provider == 'openai':
             client = OpenAI(api_key=api_key)
