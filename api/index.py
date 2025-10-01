@@ -159,5 +159,64 @@ def get_answer():
         print(f"Error calling {provider} API: {e}")
         return jsonify({"error": f"Failed to get response from {provider}.", "details": str(e)}), 500
 
+@app.route('/api/stream', methods=['POST'])
+def stream_response():
+    """Streaming endpoint for real-time AI responses"""
+    data = request.get_json()
+    provider = data.get('provider', 'emergent')
+    transcript = data.get('transcript')
+    use_gpt5 = data.get('useGPT5', True)
+    
+    if not transcript:
+        return jsonify({"error": "No transcript provided."}), 400
+    
+    def generate_stream():
+        try:
+            emergent_key = os.environ.get('EMERGENT_LLM_KEY')
+            if not emergent_key:
+                yield f"data: {json.dumps({'error': 'Emergent LLM key not configured'})}\n\n"
+                return
+                
+            # Simulate streaming by chunking response (real streaming would require WebSocket)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            model = "gpt-5" if use_gpt5 else "gpt-4o" 
+            chat = LlmChat(
+                api_key=emergent_key,
+                session_id=f"stream_session_{hash(transcript)}",
+                system_message="You are an AI meeting assistant. Provide helpful responses in real-time."
+            ).with_model("openai", model)
+            
+            user_message = UserMessage(text=transcript)
+            response = loop.run_until_complete(chat.send_message(user_message))
+            loop.close()
+            
+            # Chunk the response for streaming effect
+            words = response.split()
+            current_chunk = ""
+            
+            for i, word in enumerate(words):
+                current_chunk += word + " "
+                if i % 3 == 0 or i == len(words) - 1:  # Send every 3 words
+                    yield f"data: {json.dumps({'chunk': current_chunk.strip(), 'completed': i == len(words) - 1})}\n\n"
+                    current_chunk = ""
+                    
+        except Exception as e:
+            yield f"data: {json.dumps({'error': f'Streaming failed: {str(e)}'})}\n\n"
+    
+    return Response(generate_stream(), mimetype='text/plain')
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint with enhanced status"""
+    return jsonify({
+        "status": "healthy",
+        "service": "AI Meeting Assistant Enhanced Backend",
+        "version": "2.0.0",
+        "features": ["GPT-5", "Streaming", "Multi-Provider", "Enhanced Audio Processing"],
+        "emergent_integration": "enabled" if os.environ.get('EMERGENT_LLM_KEY') else "disabled"
+    })
+
 if __name__ == '__main__':
     app.run(debug=True)
