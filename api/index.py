@@ -48,6 +48,7 @@ CORS(app)
 def is_valid_url(url):
     return re.match(r'^https?://', url)
 
+@retry_with_backoff(max_retries=3, base_delay=1)
 async def get_emergent_response(transcript, image_url=None, use_gpt5=False):
     """Enhanced AI response using Emergent integrations with GPT-5 support"""
     try:
