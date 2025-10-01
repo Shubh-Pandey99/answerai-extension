@@ -153,7 +153,7 @@ def get_answer():
                 return jsonify({"answer": response.text})
 
         else:
-            return jsonify({"error": "Invalid provider specified."}), 400
+            return jsonify({"error": "Invalid provider specified. Use 'emergent', 'openai', 'google', 'openrouter', or 'mock'."}), 400
 
     except Exception as e:
         print(f"Error calling {provider} API: {e}")
