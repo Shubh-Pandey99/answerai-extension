@@ -175,34 +175,211 @@ OPENROUTER_API_KEY=your_openrouter_key_here
 }
 ```
 
-## How to Use the Extension in Chrome
+## 🧪 How to Test the Enhanced Extension
 
-### 1. Load the Extension
+### **Quick Test Checklist**
+```bash
+✅ Backend health check
+✅ GPT-5 integration test  
+✅ Audio capture functionality
+✅ Screen capture analysis
+✅ Real-time Q&A
+✅ Error handling resilience
+```
 
-1.  Open Chrome and navigate to `chrome://extensions`.
-2.  Enable "Developer mode" using the toggle in the top-right corner.
-3.  Click "Load unpacked" and select the folder containing the extension's source code (this entire repository).
+### **Step 1: Load Extension in Chrome**
+```bash
+# 1. Open Chrome Extensions page
+chrome://extensions/
 
-### 2. Configure the Extension
+# 2. Enable Developer Mode (top-right toggle)
 
-1.  **Pin the Extension**: Click the puzzle piece icon in the Chrome toolbar and pin the "AI Meeting Assistant" for easy access.
-2.  **Open the Popup**: Click the extension's icon to open the main interface.
-3.  **Set Your Vercel URL, Provider, and API Key**:
-    - In the extension popup, go to the "Settings" section.
-    - **Vercel URL**: Enter the full URL of your Vercel deployment (e.g., `https://your-project.vercel.app`).
-    - **Provider**: Choose your desired AI provider from the dropdown (OpenAI, Google, OpenRouter, or Mock).
-    - **API Key**: Enter your API key for the selected provider.
-    - **Save**: Click "Save Settings". Your settings are stored locally and securely.
+# 3. Click "Load unpacked" 
+# Select this entire repository folder
 
-### 3. Using the Features
+# 4. Pin the extension
+# Click puzzle piece icon → Pin "AI Meeting Assistant"
+```
 
--   **Live Audio Transcription**:
-    - Toggle on "Tab Audio" to start listening to and transcribing the audio from the current tab. The live transcript will appear below.
--   **Screen Capture**:
-    - Click "Capture Screen" to take a screenshot of the visible part of the page.
-    - Click "Summarize Image" to send the screenshot for analysis.
--   **Real-time Q&A**:
-    - Type a question into the "Ask anything..." input box and press Enter, or click the microphone to use voice-to-text.
-    - The AI's response will appear in the box below.
--   **Summarize**:
-    - After a transcript has been generated, click "Summarize the key points" to get a summary of the conversation.
+### **Step 2: Configure Extension (Zero-Setup Option)**
+```bash
+# GPT-5 (Emergent) - No API Key Needed! 🎉
+1. Click extension icon → Open popup
+2. Settings section:
+   - Vercel URL: https://your-app.vercel.app
+   - Provider: "GPT-5 (Emergent)" (default)
+   - Model: "GPT-5 (Latest)" (default)
+   - API Key: (hidden for Emergent provider)
+3. Click "Save Settings"
+
+# Alternative: Bring Your Own API Key
+- Provider: "OpenAI (Bring your key)"
+- API Key: your_openai_api_key
+- Model: GPT-4o or GPT-4o-mini
+```
+
+### **Step 3: Test Core Features**
+
+#### **🎵 Audio Transcription Test**
+```bash
+# Test with YouTube video or meeting
+1. Open a YouTube video with clear speech
+2. Click extension → Toggle "Tab Audio" ON
+3. Verify: Green waveform appears, "Status: Active" 
+4. Speak/play audio → Live transcript appears
+5. Toggle OFF → Transcript stops
+
+# Expected: Real-time text with enhanced accuracy
+```
+
+#### **📸 Screen Capture Test**
+```bash
+# Test screenshot analysis
+1. Open a webpage with text/diagrams
+2. Click "Capture Screen" button
+3. Verify: Screenshot preview appears
+4. Click "Summarize Image"
+5. Verify: GPT-5 analysis appears in Q&A box
+
+# Expected: Detailed, professional image analysis
+```
+
+#### **💬 Real-time Q&A Test**
+```bash
+# Test AI interaction
+1. Type question: "What is machine learning?"
+2. Press Enter (or use microphone button)
+3. Verify: Enhanced GPT-5 response appears
+4. Test with meeting context: Start transcription, then ask about transcript
+
+# Expected: Detailed, contextual responses with formatting
+```
+
+#### **🔧 Error Resilience Test**
+```bash
+# Test auto-retry functionality
+1. Disconnect internet briefly
+2. Try asking a question
+3. Reconnect internet
+4. Verify: Extension auto-recovers and works
+
+# Expected: "Retrying..." message, then success
+```
+
+### **Step 4: Advanced Testing**
+
+#### **Meeting Simulation Test**
+```bash
+# Full meeting workflow test
+1. Join a Google Meet/Zoom call
+2. Enable "Tab Audio" for meeting audio
+3. Take screenshot of shared screen
+4. Ask questions about meeting content
+5. Generate meeting summary
+
+# Expected: Complete meeting intelligence workflow
+```
+
+#### **Multi-Provider Test**
+```bash
+# Test provider switching
+1. Test with GPT-5 (Emergent)
+2. Switch to "OpenAI" (with your API key)
+3. Test with "Google Gemini" 
+4. Test with "Mock" provider
+5. Verify all providers work correctly
+
+# Expected: Consistent functionality across providers
+```
+
+## 🚀 Using the Enhanced Extension
+
+### **1. Zero-Setup GPT-5 Experience**
+- **Default Provider**: GPT-5 (Emergent) - No API key required!
+- **Instant Access**: Works immediately after deployment
+- **Professional Responses**: Enhanced meeting analysis and insights
+
+### **2. Enhanced Audio Features**
+- **Tab Audio Capture**: 
+  - Toggle "Tab Audio" → Captures meeting/video audio
+  - Enhanced noise suppression and volume normalization
+  - Real-time waveform with audio quality indicators
+  
+- **Microphone Input**:
+  - Click microphone icon in Q&A section
+  - Voice-to-text for questions and commands
+  - Supports speech recognition in multiple languages
+
+### **3. Smart Screen Analysis**
+- **Capture Screen**: High-quality screenshot of current tab
+- **AI Analysis**: GPT-5 powered visual understanding
+  - Recognizes: Whiteboards, code snippets, presentations, diagrams
+  - Extracts: Text content, key points, action items
+  - Provides: Context-aware explanations and summaries
+
+### **4. Intelligent Q&A System**
+- **Context Awareness**: AI remembers meeting transcript
+- **Natural Language**: Ask questions in plain English
+- **Enhanced Responses**: Professional formatting with bold/italic text
+- **Voice Input**: Click microphone for voice questions
+- **Enter Key Support**: Press Enter to submit questions quickly
+
+### **5. Professional Meeting Summaries**
+- **Auto-Summarization**: Click "Summarize key points"
+- **Structured Output**: 
+  - Key discussion points
+  - Action items and decisions
+  - Participant insights
+  - Next steps and deadlines
+- **Export Ready**: Formatted for sharing and documentation
+
+### **6. Error Recovery & Reliability**
+- **Auto-Retry**: Failed requests automatically retry (3 attempts)
+- **Network Recovery**: Handles internet disconnections gracefully
+- **Status Indicators**: Clear feedback on system status
+- **Detailed Logging**: Comprehensive error tracking for debugging
+
+## 🔧 Troubleshooting
+
+### **Common Issues & Solutions**
+```bash
+# Issue: "Please set the Vercel URL"
+Solution: Enter your deployed backend URL in settings
+
+# Issue: "API key is required" (for non-Emergent providers)
+Solution: Add your provider's API key in settings
+
+# Issue: Audio not capturing
+Solution: Grant microphone/tab permissions when prompted
+
+# Issue: Screenshot not working  
+Solution: Grant screen capture permissions in Chrome
+
+# Issue: Responses taking too long
+Solution: Check internet connection, try switching providers
+
+# Issue: Transcript not appearing
+Solution: Ensure audio is playing, check browser tab permissions
+```
+
+### **Debug Mode**
+```bash
+# Enable Chrome extension debug mode
+1. Go to chrome://extensions/
+2. Click "Details" on AI Meeting Assistant
+3. Click "Inspect views: popup"
+4. Check Console tab for errors
+
+# Backend health check
+curl https://your-app.vercel.app/api/health
+```
+
+### **Performance Optimization**
+```bash
+# For best performance:
+✅ Use GPT-5 (Emergent) as default provider
+✅ Ensure stable internet connection
+✅ Close unnecessary browser tabs
+✅ Grant all required permissions
+✅ Keep extension popup open during use
+```
