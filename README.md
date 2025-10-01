@@ -48,7 +48,7 @@ A comprehensive real-time AI assistant for meetings and browser use that provide
    ```
 
 2. Set your backend URL in the extension settings
-3. The extension comes pre-configured with Emergent LLM key for GPT-5
+3. Set your `OPENAI_API_KEY` in the backend environment.
 
 ### Usage
 1. **Start Recording**: Click the extension icon and toggle "Tab Audio" or "Microphone"  
@@ -79,8 +79,7 @@ A comprehensive real-time AI assistant for meetings and browser use that provide
 ### AI Providers
 The extension supports multiple AI providers:
 
-- **Emergent (Default)**: GPT-5 with pre-configured API key
-- **OpenAI**: Bring your own OpenAI API key for GPT-4o/4o-mini
+- **OpenAI (Default)**: GPT-4o with your own API key.
 - **Google**: Use your Google AI API key for Gemini models
 - **OpenRouter**: Access to various models through OpenRouter
 - **Mock**: For testing without API costs
@@ -154,7 +153,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔄 Version History
 
 ### v2.0.0 (Current)
-- ✅ Enhanced GPT-5 integration with Emergent LLM key
+- ✅ OpenAI GPT-4o as the default provider.
 - ✅ Microphone audio capture alongside tab audio
 - ✅ Image annotation and editing tools
 - ✅ Desktop notifications and status overlays
