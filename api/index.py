@@ -101,7 +101,7 @@ def get_answer():
             client = OpenAI(api_key=api_key)
             if transcript:
                 response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
+                    model="gpt-4o",
                     messages=[{"role": "user", "content": transcript}]
                 )
                 return jsonify({"answer": response.choices[0].message.content})
