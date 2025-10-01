@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response, stream_template_string
 from flask_cors import CORS
 from openai import OpenAI
 import google.generativeai as genai
@@ -6,6 +6,14 @@ from PIL import Image
 import requests
 from io import BytesIO
 import re
+import os
+import asyncio
+import json
+from dotenv import load_dotenv
+from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
