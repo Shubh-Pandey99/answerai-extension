@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveAnnotationBtn = document.getElementById('save-annotation');
   const annotationCanvas = document.getElementById('annotation-canvas');
   const providerSelect = document.getElementById('provider-select');
-  const apiKeyInput = document.getElementById('api-key-input');
   const saveSettingsBtn = document.getElementById('save-settings');
   const vercelUrlInput = document.getElementById('vercel-url-input');
   const notificationToggle = document.getElementById('notification-toggle');
@@ -38,10 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const waveformBars = document.querySelectorAll('.waveform .bar');
 
   // Load settings
-  chrome.storage.local.get(['provider', 'apiKey', 'vercelUrl', 'model', 'notifications', 'tts'], (res) => {
+  chrome.storage.local.get(['provider', 'vercelUrl', 'model', 'notifications', 'tts'], (res) => {
     if (res.provider) providerSelect.value = res.provider;
-    else providerSelect.value = 'emergent';
-    if (res.apiKey) apiKeyInput.value = res.apiKey;
+    else providerSelect.value = 'openai';
     if (res.vercelUrl) vercelUrlInput.value = res.vercelUrl;
     if (res.model) modelSelect.value = res.model;
     else modelSelect.value = 'gpt-5';
@@ -49,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
     notificationsEnabled = res.notifications !== false;
     ttsEnabled = res.tts !== false;
     
-    updateApiKeyVisibility();
     updateStatusIndicators();
   });
 
@@ -66,19 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
     notificationStatus.style.opacity = notificationsEnabled ? '1' : '0.3';
     ttsStatus.style.opacity = ttsEnabled ? '1' : '0.3';
   }
-
-  // Show/hide API key input based on provider
-  function updateApiKeyVisibility() {
-    const provider = providerSelect.value;
-    const apiKeyGroup = apiKeyInput.closest('.settings-group');
-    if (provider === 'emergent' || provider === 'mock') {
-      apiKeyGroup.style.display = 'none';
-    } else {
-      apiKeyGroup.style.display = 'block';
-    }
-  }
-
-  providerSelect.addEventListener('change', updateApiKeyVisibility);
 
   // Notification toggle
   notificationToggle.addEventListener('click', () => {
@@ -264,10 +248,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   saveSettingsBtn.addEventListener('click', () => {
     const provider = providerSelect.value;
-    const apiKey = apiKeyInput.value;
     const vercelUrl = vercelUrlInput.value;
     const model = modelSelect.value;
-    chrome.storage.local.set({ provider, apiKey, vercelUrl, model, notifications: notificationsEnabled, tts: ttsEnabled }, () => {
+    chrome.storage.local.set({ provider, vercelUrl, model, notifications: notificationsEnabled, tts: ttsEnabled }, () => {
       saveSettingsBtn.textContent = 'Saved!';
       setTimeout(() => { saveSettingsBtn.textContent = 'Save Settings'; }, 1500);
     });
@@ -356,8 +339,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Enhanced API Call Functions
   async function makeApiCall(payload, retries = 3) {
-    const { provider, apiKey, vercelUrl, model } = await new Promise(resolve => 
-      chrome.storage.local.get(['provider', 'apiKey', 'vercelUrl', 'model'], resolve)
+    const { provider, vercelUrl, model } = await new Promise(resolve => 
+      chrome.storage.local.get(['provider', 'vercelUrl', 'model'], resolve)
     );
     
     if (!vercelUrl) {
@@ -367,8 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const useGPT5 = model === 'gpt-5';
     const requestPayload = {
       ...payload,
-      provider: provider || 'emergent',
-      apiKey: apiKey || '',
+      provider: provider || 'openai',
       useGPT5: useGPT5
     };
     

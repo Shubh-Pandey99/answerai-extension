@@ -12,6 +12,10 @@
   --blue-accent: #2D8CFF;
 }
 
+html {
+  width: 650px;
+}
+
 body {
   font-family: 'Inter', sans-serif;
   background-color: var(--background-color);
@@ -69,6 +73,7 @@ h2 { font-size: 16px; font-weight: 600; margin: 0 0 16px 0; color: var(--seconda
   font-weight: 500; transition: background-color 0.2s;
 }
 .capture-btn:hover, .summarize-btn:hover, .icon-btn:hover { background-color: var(--button-hover-color); }
+.capture-btn:active, .summarize-btn:active, .icon-btn:active { transform: scale(0.98); }
 
 .icon-btn.recording { animation: glowing 1.5s infinite; box-shadow: 0 0 5px var(--blue-accent), 0 0 10px var(--blue-accent); }
 @keyframes glowing { 0% {box-shadow:0 0 3px var(--blue-accent);} 50% {box-shadow:0 0 10px var(--blue-accent),0 0 15px var(--blue-accent);} 100% {box-shadow:0 0 3px var(--blue-accent);} }

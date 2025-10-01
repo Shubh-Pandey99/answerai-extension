@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response, stream_template_string
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from openai import OpenAI
 import google.generativeai as genai
@@ -7,12 +7,11 @@ import requests
 from io import BytesIO
 import re
 import os
-import asyncio
 import json
 import time
 import logging
+from abc import ABC, abstractmethod
 from dotenv import load_dotenv
-from emergentintegrations.llm.chat import LlmChat, UserMessage
 from functools import wraps
 
 # Load environment variables
@@ -26,224 +25,199 @@ def retry_with_backoff(max_retries=3, base_delay=1):
     """Decorator for automatic retry with exponential backoff"""
     def decorator(func):
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs):
             for attempt in range(max_retries):
                 try:
-                    return await func(*args, **kwargs)
+                    return func(*args, **kwargs)
                 except Exception as e:
                     if attempt == max_retries - 1:
                         logger.error(f"Final attempt failed for {func.__name__}: {e}")
                         raise e
                     
-                    delay = base_delay * (2 ** attempt)  # Exponential backoff
+                    delay = base_delay * (2 ** attempt)
                     logger.warning(f"Attempt {attempt + 1} failed for {func.__name__}: {e}. Retrying in {delay}s...")
-                    await asyncio.sleep(delay)
+                    time.sleep(delay)
             return None
         return wrapper
     return decorator
 
-app = Flask(__name__)
-CORS(app)
+# --- Provider Abstraction ---
 
-def is_valid_url(url):
-    return re.match(r'^https?://', url)
+class BaseProvider(ABC):
+    @abstractmethod
+    def get_response(self, transcript, image_url=None):
+        pass
 
-@retry_with_backoff(max_retries=3, base_delay=1)
-async def get_emergent_response(transcript, image_url=None, use_gpt5=False):
-    """Enhanced AI response using Emergent integrations with GPT-5 support"""
-    try:
-        emergent_key = os.environ.get('EMERGENT_LLM_KEY')
-        if not emergent_key:
-            return {"error": "Emergent LLM key not configured"}
-        
-        # Initialize LlmChat with GPT-5 or GPT-4o
-        model = "gpt-5" if use_gpt5 else "gpt-4o"
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"meeting_assistant_{hash(transcript or image_url or 'session')}",
-            system_message="You are an AI meeting assistant. Provide helpful, concise, and accurate responses to questions about meetings, transcripts, and images. Format your responses clearly and professionally."
-        ).with_model("openai", model)
-        
-        # Handle text input
+    @abstractmethod
+    def stream_response(self, transcript):
+        pass
+
+class OpenAIProvider(BaseProvider):
+    def __init__(self):
+        self.api_key = os.environ.get('OPENAI_API_KEY')
+        if not self.api_key:
+            raise ValueError("OPENAI_API_KEY not configured")
+        self.client = OpenAI(api_key=self.api_key)
+        self.model = "gpt-4o"
+
+    @retry_with_backoff()
+    def get_response(self, transcript, image_url=None):
         if transcript:
-            user_message = UserMessage(text=transcript)
-            response = await chat.send_message(user_message)
-            return {"answer": response}
-        
-        # Handle image analysis (fallback to OpenAI for now)
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": transcript}]
+            )
+            return {"answer": response.choices[0].message.content}
         elif image_url:
-            client = OpenAI(api_key=emergent_key)
-            response = client.chat.completions.create(
-                model="gpt-4o",
+            response = self.client.chat.completions.create(
+                model=self.model,
                 messages=[{
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "Analyze this image and describe what you see. If it's a meeting screenshot, identify key points, text, or visual elements."},
+                        {"type": "text", "text": "Analyze this image..."},
                         {"type": "image_url", "image_url": {"url": image_url}},
                     ],
                 }]
             )
             return {"answer": response.choices[0].message.content}
-            
         return {"error": "No input provided"}
-        
-    except Exception as e:
-        print(f"Error with Emergent integration: {e}")
-        return {"error": f"Emergent AI processing failed: {str(e)}"}
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def catch_all(path):
-    return 'AI Meeting Assistant Python backend is running successfully!'
+    def stream_response(self, transcript):
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": transcript}],
+                stream=True
+            )
+            for chunk in response:
+                content = chunk.choices[0].delta.content
+                if content:
+                    yield f"data: {json.dumps({'chunk': content, 'completed': False})}\n\n"
+            yield f"data: {json.dumps({'completed': True})}\n\n"
+        except GeneratorExit:
+            logger.info("Client disconnected from stream.")
+        except Exception as e:
+            yield f"data: {json.dumps({'error': f'Streaming failed: {str(e)}'})}\n\n"
+
+class GoogleProvider(BaseProvider):
+    def __init__(self):
+        self.api_key = os.environ.get('GOOGLE_API_KEY')
+        if not self.api_key:
+            raise ValueError("GOOGLE_API_KEY not configured")
+        genai.configure(api_key=self.api_key)
+        self.model = genai.GenerativeModel('gemini-pro-vision')
+
+    @retry_with_backoff()
+    def get_response(self, transcript, image_url=None):
+        if transcript and image_url:
+            image_response = requests.get(image_url)
+            image_parts = [
+                {"mime_type": "image/jpeg", "data": image_response.content}
+            ]
+            response = self.model.generate_content([transcript, image_parts])
+            return {"answer": response.text}
+        elif transcript:
+            response = self.model.generate_content(transcript)
+            return {"answer": response.text}
+        elif image_url:
+            image_response = requests.get(image_url)
+            image_parts = [
+                {"mime_type": "image/jpeg", "data": image_response.content}
+            ]
+            response = self.model.generate_content(image_parts)
+            return {"answer": response.text}
+        return {"error": "No input provided"}
+
+    def stream_response(self, transcript):
+        yield f"data: {json.dumps({'error': 'Streaming not supported for Google provider yet.'})}\n\n"
+
+class MockProvider(BaseProvider):
+    def get_response(self, transcript, image_url=None):
+        return {"answer": "Mock response: analysis complete."}
+    def stream_response(self, transcript):
+        for word in ["This", "is", "a", "mock", "stream."]:
+            yield f"data: {json.dumps({'chunk': word + ' ', 'completed': False})}\n\n"
+            time.sleep(0.2)
+        yield f"data: {json.dumps({'completed': True})}\n\n"
+
+PROVIDERS = {
+    "openai": OpenAIProvider,
+    "google": GoogleProvider,
+    "mock": MockProvider,
+}
+
+def get_provider(provider_name: str) -> BaseProvider:
+    ProviderClass = PROVIDERS.get(provider_name)
+    if not ProviderClass:
+        raise ValueError("Invalid provider specified")
+    try:
+        return ProviderClass()
+    except ValueError as e:
+        # Handle missing API key
+        raise ValueError(f"Failed to initialize provider '{provider_name}': {e}")
+
+
+app = Flask(__name__)
+CORS(app)
 
 @app.route('/api/answer', methods=['POST'])
 def get_answer():
     data = request.get_json()
-    provider = data.get('provider', 'emergent')  # Default to emergent
-    api_key = data.get('apiKey')
+    provider_name = data.get('provider', 'openai')
     transcript = data.get('transcript')
     image_url = data.get('imageUrl')
-    use_gpt5 = data.get('useGPT5', True)  # Default to GPT-5
-    
+
     if not transcript and not image_url:
         return jsonify({"error": "No transcript or image URL provided."}), 400
-    if image_url and not is_valid_url(image_url):
-        return jsonify({"error": "Invalid image URL provided."}), 400
 
     try:
-        # Enhanced Emergent provider (Primary)
-        if provider in ['emergent', 'gpt5', 'openai-emergent']:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            result = loop.run_until_complete(get_emergent_response(transcript, image_url, use_gpt5))
-            loop.close()
-            if "error" in result:
-                return jsonify(result), 500
-            return jsonify(result)
-            
-        # Mock provider
-        elif provider == 'mock':
-            return jsonify({"answer": "Enhanced mock response with GPT-5 simulation - meeting analysis complete."})
-
-        # Legacy OpenAI provider
-        elif provider == 'openai':
-            if not api_key:
-                return jsonify({"error": "API key is required for OpenAI provider."}), 400
-                
-            client = OpenAI(api_key=api_key)
-            if transcript:
-                response = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[{"role": "user", "content": transcript}]
-                )
-                return jsonify({"answer": response.choices[0].message.content})
-            elif image_url:
-                response = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": "What’s in this image?"},
-                            {"type": "image_url", "image_url": {"url": image_url}},
-                        ],
-                    }]
-                )
-                return jsonify({"answer": response.choices[0].message.content})
-
-        elif provider == 'openrouter':
-            if not api_key:
-                return jsonify({"error": "API key is required for OpenRouter provider."}), 400
-                
-            client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
-            if transcript:
-                response = client.chat.completions.create(
-                    model="openai/gpt-4o",
-                    messages=[{"role": "user", "content": transcript}],
-                )
-                return jsonify({"answer": response.choices[0].message.content})
-            else:
-                return jsonify({"error": "OpenRouter provider does not support image analysis."}), 400
-
-        elif provider == 'google':
-            if not api_key:
-                return jsonify({"error": "API key is required for Google provider."}), 400
-                
-            genai.configure(api_key=api_key)
-            if transcript:
-                model = genai.GenerativeModel('gemini-2.0-flash')
-                response = model.generate_content(transcript)
-                return jsonify({"answer": response.text})
-            elif image_url:
-                model = genai.GenerativeModel('gemini-2.0-flash')
-                response = requests.get(image_url)
-                img = Image.open(BytesIO(response.content))
-                response = model.generate_content(img)
-                return jsonify({"answer": response.text})
-
-        else:
-            return jsonify({"error": "Invalid provider specified. Use 'emergent', 'openai', 'google', 'openrouter', or 'mock'."}), 400
-
+        provider = get_provider(provider_name)
+        result = provider.get_response(transcript, image_url)
+        if "error" in result:
+            return jsonify(result), 500
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
-        print(f"Error calling {provider} API: {e}")
-        return jsonify({"error": f"Failed to get response from {provider}.", "details": str(e)}), 500
+        logger.error(f"Error with provider {provider_name}: {e}")
+        return jsonify({"error": "An unexpected error occurred."}), 500
 
 @app.route('/api/stream', methods=['POST'])
 def stream_response():
-    """Streaming endpoint for real-time AI responses"""
     data = request.get_json()
-    provider = data.get('provider', 'emergent')
+    provider_name = data.get('provider', 'openai')
     transcript = data.get('transcript')
-    use_gpt5 = data.get('useGPT5', True)
-    
+
     if not transcript:
         return jsonify({"error": "No transcript provided."}), 400
-    
-    def generate_stream():
-        try:
-            emergent_key = os.environ.get('EMERGENT_LLM_KEY')
-            if not emergent_key:
-                yield f"data: {json.dumps({'error': 'Emergent LLM key not configured'})}\n\n"
-                return
-                
-            # Simulate streaming by chunking response (real streaming would require WebSocket)
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            model = "gpt-5" if use_gpt5 else "gpt-4o" 
-            chat = LlmChat(
-                api_key=emergent_key,
-                session_id=f"stream_session_{hash(transcript)}",
-                system_message="You are an AI meeting assistant. Provide helpful responses in real-time."
-            ).with_model("openai", model)
-            
-            user_message = UserMessage(text=transcript)
-            response = loop.run_until_complete(chat.send_message(user_message))
-            loop.close()
-            
-            # Chunk the response for streaming effect
-            words = response.split()
-            current_chunk = ""
-            
-            for i, word in enumerate(words):
-                current_chunk += word + " "
-                if i % 3 == 0 or i == len(words) - 1:  # Send every 3 words
-                    yield f"data: {json.dumps({'chunk': current_chunk.strip(), 'completed': i == len(words) - 1})}\n\n"
-                    current_chunk = ""
-                    
-        except Exception as e:
-            yield f"data: {json.dumps({'error': f'Streaming failed: {str(e)}'})}\n\n"
-    
-    return Response(generate_stream(), mimetype='text/plain')
+
+    try:
+        provider = get_provider(provider_name)
+        return Response(provider.stream_response(transcript), mimetype='text/event-stream')
+    except ValueError as e:
+        # Cannot return a JSON error in a stream, so we handle it this way
+        def error_stream():
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        return Response(error_stream(), mimetype='text/event-stream')
+
+def check_openai_connectivity():
+    try:
+        provider = OpenAIProvider()
+        provider.client.models.list()
+        return "ok"
+    except Exception as e:
+        logger.error(f"OpenAI connectivity check failed: {e}")
+        return "error"
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check endpoint with enhanced status"""
+    openai_status = check_openai_connectivity()
     return jsonify({
         "status": "healthy",
-        "service": "AI Meeting Assistant Enhanced Backend",
-        "version": "2.0.0",
-        "features": ["GPT-5", "Streaming", "Multi-Provider", "Enhanced Audio Processing"],
-        "emergent_integration": "enabled" if os.environ.get('EMERGENT_LLM_KEY') else "disabled"
+        "version": "2.1.0",
+        "dependencies": {
+            "openai": openai_status
+        }
     })
 
 if __name__ == '__main__':
