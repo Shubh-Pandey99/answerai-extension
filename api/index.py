@@ -1,224 +1,186 @@
+import os, io, json, time, base64, logging, tempfile
+from functools import wraps
+from abc import ABC, abstractmethod
+from io import BytesIO
+
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
+from dotenv import load_dotenv
+
+import requests
+from PIL import Image, UnidentifiedImageError
+
 from openai import OpenAI
 import google.generativeai as genai
-from PIL import Image
-import requests
-from io import BytesIO
-import re
-import os
-import json
-import time
-import logging
-from abc import ABC, abstractmethod
-from dotenv import load_dotenv
-from functools import wraps
 
-# Load environment variables
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("answerai-api")
 
 def retry_with_backoff(max_retries=3, base_delay=1):
-    """Decorator for automatic retry with exponential backoff"""
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            for attempt in range(max_retries):
-                try:
-                    return func(*args, **kwargs)
+    def deco(fn):
+        @wraps(fn)
+        def wrap(*a, **k):
+            for i in range(max_retries):
+                try: return fn(*a, **k)
                 except Exception as e:
-                    if attempt == max_retries - 1:
-                        logger.error(f"Final attempt failed for {func.__name__}: {e}")
-                        raise e
-                    
-                    delay = base_delay * (2 ** attempt)
-                    logger.warning(f"Attempt {attempt + 1} failed for {func.__name__}: {e}. Retrying in {delay}s...")
-                    time.sleep(delay)
-            return None
-        return wrapper
-    return decorator
+                    if i == max_retries-1: log.error("Final attempt failed for %s: %s", fn.__name__, e); raise
+                    time.sleep(base_delay * (2 ** i))
+        return wrap
+    return deco
 
-# --- Provider Abstraction ---
-
+# ---------- Providers ----------
 class BaseProvider(ABC):
     @abstractmethod
-    def get_response(self, transcript, image_url=None):
-        pass
+    def get_response(self, transcript=None, image_url=None, image_base64=None): ...
 
     @abstractmethod
-    def stream_response(self, transcript):
-        pass
+    def stream_response(self, transcript): ...
 
 class OpenAIProvider(BaseProvider):
     def __init__(self):
-        self.api_key = os.environ.get('OPENAI_API_KEY')
-        if not self.api_key:
-            raise ValueError("OPENAI_API_KEY not configured")
-        self.client = OpenAI(api_key=self.api_key)
-        self.model = "gpt-4o"
+        key = os.getenv("OPENAI_API_KEY")
+        if not key: raise ValueError("OPENAI_API_KEY not configured")
+        self.client = OpenAI(api_key=key)
+        self.model = os.getenv("OPENAI_MODEL", "gpt-4o")
 
     @retry_with_backoff()
-    def get_response(self, transcript, image_url=None):
-        if transcript:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": transcript}]
-            )
-            return {"answer": response.choices[0].message.content}
-        elif image_url:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "Analyze this image..."},
-                        {"type": "image_url", "image_url": {"url": image_url}},
-                    ],
-                }]
-            )
-            return {"answer": response.choices[0].message.content}
-        return {"error": "No input provided"}
+    def get_response(self, transcript=None, image_url=None, image_base64=None):
+        messages = []
+        if transcript and (image_url or image_base64):
+            content = [{"type": "text", "text": transcript}]
+            if image_base64:
+                content.append({"type":"image_url","image_url":{"url": image_base64}})
+            elif image_url:
+                content.append({"type":"image_url","image_url":{"url": image_url}})
+            messages.append({"role":"user","content":content})
+        elif transcript:
+            messages.append({"role":"user","content":transcript})
+        else:
+            if not (image_url or image_base64): return {"error":"No input provided"}
+            content = [{"type":"text","text":"Analyze this image and summarize key insights."}]
+            if image_base64:
+                content.append({"type":"image_url","image_url":{"url": image_base64}})
+            else:
+                content.append({"type":"image_url","image_url":{"url": image_url}})
+            messages.append({"role":"user","content":content})
+
+        resp = self.client.chat.completions.create(model=self.model, messages=messages)
+        return {"answer": resp.choices[0].message.content}
 
     def stream_response(self, transcript):
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": transcript}],
-                stream=True
-            )
-            for chunk in response:
-                content = chunk.choices[0].delta.content
-                if content:
-                    yield f"data: {json.dumps({'chunk': content, 'completed': False})}\n\n"
-            yield f"data: {json.dumps({'completed': True})}\n\n"
-        except GeneratorExit:
-            logger.info("Client disconnected from stream.")
-        except Exception as e:
-            yield f"data: {json.dumps({'error': f'Streaming failed: {str(e)}'})}\n\n"
+        yield f"data: {json.dumps({'error':'OpenAI streaming not used here'})}\n\n"
 
 class GoogleProvider(BaseProvider):
     def __init__(self):
-        self.api_key = os.environ.get('GOOGLE_API_KEY')
-        if not self.api_key:
-            raise ValueError("GOOGLE_API_KEY not configured")
-        genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel('gemini-pro-vision')
+        key = os.getenv("GOOGLE_API_KEY")
+        if not key: raise ValueError("GOOGLE_API_KEY not configured")
+        genai.configure(api_key=key)
+        self.model_name = os.getenv("GOOGLE_MODEL", "gemini-2.5-pro")
+        self.model = genai.GenerativeModel(self.model_name)
+
+    def _pil_from_base64(self, data_uri:str):
+        header, encoded = data_uri.split(",",1)
+        b = base64.b64decode(encoded)
+        try:
+            return Image.open(BytesIO(b))
+        except UnidentifiedImageError:
+            raise ValueError("Invalid image data")
+
+    def _pil_from_url(self, url:str):
+        r = requests.get(url, headers={"User-Agent":"Mozilla/5.0"}, timeout=10)
+        if r.status_code != 200: raise ValueError(f"Image download failed HTTP {r.status_code}")
+        try: return Image.open(BytesIO(r.content))
+        except UnidentifiedImageError: raise ValueError("Failed to decode image")
 
     @retry_with_backoff()
-    def get_response(self, transcript, image_url=None):
-        if transcript and image_url:
-            image_response = requests.get(image_url)
-            image_parts = [
-                {"mime_type": "image/jpeg", "data": image_response.content}
-            ]
-            response = self.model.generate_content([transcript, image_parts])
-            return {"answer": response.text}
-        elif transcript:
-            response = self.model.generate_content(transcript)
-            return {"answer": response.text}
-        elif image_url:
-            image_response = requests.get(image_url)
-            image_parts = [
-                {"mime_type": "image/jpeg", "data": image_response.content}
-            ]
-            response = self.model.generate_content(image_parts)
-            return {"answer": response.text}
-        return {"error": "No input provided"}
+    def get_response(self, transcript=None, image_url=None, image_base64=None):
+        parts = []
+        if transcript: parts.append(transcript)
+        if image_base64: parts.append(self._pil_from_base64(image_base64))
+        elif image_url:  parts.append(self._pil_from_url(image_url))
+        if not parts: return {"error":"No input provided"}
+        resp = self.model.generate_content(parts)
+        return {"answer": resp.text}
 
     def stream_response(self, transcript):
-        yield f"data: {json.dumps({'error': 'Streaming not supported for Google provider yet.'})}\n\n"
+        yield f"data: {json.dumps({'error':'Gemini streaming not used here'})}\n\n"
 
-class MockProvider(BaseProvider):
-    def get_response(self, transcript, image_url=None):
-        return {"answer": "Mock response: analysis complete."}
-    def stream_response(self, transcript):
-        for word in ["This", "is", "a", "mock", "stream."]:
-            yield f"data: {json.dumps({'chunk': word + ' ', 'completed': False})}\n\n"
-            time.sleep(0.2)
-        yield f"data: {json.dumps({'completed': True})}\n\n"
+PROVIDERS = {"openai": OpenAIProvider, "google": GoogleProvider}
 
-PROVIDERS = {
-    "openai": OpenAIProvider,
-    "google": GoogleProvider,
-    "mock": MockProvider,
-}
+def get_provider(name):
+    cls = PROVIDERS.get(name)
+    if not cls: raise ValueError("Invalid provider")
+    return cls()
 
-def get_provider(provider_name: str) -> BaseProvider:
-    ProviderClass = PROVIDERS.get(provider_name)
-    if not ProviderClass:
-        raise ValueError("Invalid provider specified")
-    try:
-        return ProviderClass()
-    except ValueError as e:
-        # Handle missing API key
-        raise ValueError(f"Failed to initialize provider '{provider_name}': {e}")
-
-
+# ---------- Flask ----------
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*":{"origins":["chrome-extension://*","http://localhost:*","http://127.0.0.1:*"]}})
 
-@app.route('/api/answer', methods=['POST'])
-def get_answer():
-    data = request.get_json()
-    provider_name = data.get('provider', 'openai')
-    transcript = data.get('transcript')
-    image_url = data.get('imageUrl')
+@app.get("/")
+def root(): return "✅ AnswerAI API is running", 200
 
-    if not transcript and not image_url:
-        return jsonify({"error": "No transcript or image URL provided."}), 400
+@app.get("/health")
+def health(): return jsonify({"status":"ok"}), 200
 
+@app.post("/api/answer")
+def answer():
     try:
+        data = request.get_json(force=True) or {}
+        provider_name = data.get("provider","google")
+        transcript = data.get("transcript")
+        image_url = data.get("imageUrl")
+        image_base64 = data.get("imageBase64")
+
         provider = get_provider(provider_name)
-        result = provider.get_response(transcript, image_url)
-        if "error" in result:
-            return jsonify(result), 500
-        return jsonify(result)
+        result = provider.get_response(transcript=transcript, image_url=image_url, image_base64=image_base64)
+        if "error" in result: return jsonify(result), 400
+        return jsonify(result), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        logger.error(f"Error with provider {provider_name}: {e}")
-        return jsonify({"error": "An unexpected error occurred."}), 500
+        log.exception("answer failed")
+        return jsonify({"error":"Server error"}), 500
 
-@app.route('/api/stream', methods=['POST'])
-def stream_response():
-    data = request.get_json()
-    provider_name = data.get('provider', 'openai')
-    transcript = data.get('transcript')
+# -------- Simple chunked STT (Whisper-1) --------
+# Accepts audioBase64 (webm/opus) chunks and returns incremental text.
+from werkzeug.utils import secure_filename
 
-    if not transcript:
-        return jsonify({"error": "No transcript provided."}), 400
-
+@app.post("/api/transcribe")
+def transcribe():
     try:
-        provider = get_provider(provider_name)
-        return Response(provider.stream_response(transcript), mimetype='text/event-stream')
-    except ValueError as e:
-        # Cannot return a JSON error in a stream, so we handle it this way
-        def error_stream():
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
-        return Response(error_stream(), mimetype='text/event-stream')
+        data = request.get_json(force=True) or {}
+        audio_b64 = data.get("audioBase64")
+        mime = data.get("mimeType","audio/webm")
+        session_id = secure_filename(data.get("sessionId","default"))
+        if not audio_b64: return jsonify({"error":"No audioBase64"}), 400
 
-def check_openai_connectivity():
-    try:
-        provider = OpenAIProvider()
-        provider.client.models.list()
-        return "ok"
+        # decode to temp file
+        header, encoded = audio_b64.split(",",1)
+        buf = base64.b64decode(encoded)
+        suffix = ".webm" if "webm" in mime else ".mp3"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
+            f.write(buf)
+            tmp_path = f.name
+
+        # call Whisper-1
+        oai_key = os.getenv("OPENAI_API_KEY")
+        if not oai_key: return jsonify({"error":"OPENAI_API_KEY not configured for STT"}), 500
+        client = OpenAI(api_key=oai_key)
+        with open(tmp_path, "rb") as fp:
+            tr = client.audio.transcriptions.create(model="whisper-1", file=fp)
+        text = getattr(tr, "text", "").strip()
+        try: os.remove(tmp_path)
+        except: pass
+        return jsonify({"text": text})
     except Exception as e:
-        logger.error(f"OpenAI connectivity check failed: {e}")
-        return "error"
+        log.exception("transcribe failed")
+        return jsonify({"error":"Transcription error"}), 500
 
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    openai_status = check_openai_connectivity()
-    return jsonify({
-        "status": "healthy",
-        "version": "2.1.0",
-        "dependencies": {
-            "openai": openai_status
-        }
-    })
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    host = os.getenv("HOST","0.0.0.0")
+    port = int(os.getenv("PORT",5055))
+    debug = os.getenv("DEBUG","true").lower()=="true"
+    log.info("Starting AnswerAI API on %s:%s (debug=%s)", host, port, debug)
+    app.run(host=host, port=port, debug=debug)

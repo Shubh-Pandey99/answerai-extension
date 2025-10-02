@@ -1,94 +1,88 @@
-let audioContext = null;
 let mediaStream = null;
-let workletNode = null;
-let recognition = null;
+let mediaRecorder = null;
+let apiBase = 'http://127.0.0.1:5055';
+let sessionId = crypto.randomUUID();
 
-chrome.runtime.onMessage.addListener(async (message) => {
-  if (message.target !== 'offscreen') return;
-
-  if (message.type === 'start-recording') {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { mandatory: { chromeMediaSource: 'tab', chromeMediaSourceId: message.data } }
-      });
-
-      mediaStream = stream;
-      audioContext = new AudioContext();
-      const source = audioContext.createMediaStreamSource(stream);
-
-      await audioContext.audioWorklet.addModule('audio-processor.js');
-      workletNode = new AudioWorkletNode(audioContext, 'audio-processor');
-
-      source.connect(workletNode).connect(audioContext.destination);
-
-      workletNode.port.onmessage = (event) => {
-        const audioData = event.data;
-        
-        // Send enhanced audio data with additional metrics
-        chrome.runtime.sendMessage({ 
-          type: 'audio-data', 
-          target: 'background', 
-          data: audioData.audio || audioData,
-          rms: audioData.rms || 0,
-          timestamp: audioData.timestamp || Date.now(),
-          enhanced: true
-        });
-      };
-
-      // Initialize speech recognition for transcription
-      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-
-        recognition.onresult = (event) => {
-          let transcript = '';
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            if (event.results[i].isFinal) {
-              transcript += event.results[i][0].transcript + ' ';
-            }
-          }
-          
-          if (transcript.trim()) {
-            chrome.runtime.sendMessage({
-              type: 'transcript-update',
-              transcript: transcript.trim()
-            });
-          }
-        };
-
-        recognition.onerror = (event) => {
-          console.error('Speech recognition error:', event.error);
-        };
-
-        recognition.start();
-      }
-
-    } catch (error) {
-      console.error('Failed to start recording:', error);
-    }
-  } else if (message.type === 'stop-recording') {
-    // Clean up resources
-    if (recognition) {
-      recognition.stop();
-      recognition = null;
-    }
-    
-    if (workletNode) {
-      workletNode.disconnect();
-      workletNode = null;
-    }
-    
-    if (audioContext) {
-      audioContext.close();
-      audioContext = null;
-    }
-    
-    if (mediaStream) {
-      mediaStream.getTracks().forEach(track => track.stop());
-      mediaStream = null;
-    }
+// listen for commands from background
+chrome.runtime.onMessage.addListener(async (msg) => {
+  if (msg?.target !== 'offscreen') return;
+  if (msg.action === 'start') {
+    apiBase = msg.apiBase || apiBase;
+    await startCapture();
+  }
+  if (msg.action === 'stop') {
+    await stopCapture();
   }
 });
+
+async function startCapture() {
+  try {
+    // Prefer tab audio; if fails, fall back to mic
+    mediaStream = await chrome.tabCapture.capture({ audio: true, video: false });
+    if (!mediaStream) {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+
+    const audioCtx = new AudioContext();
+    const src = audioCtx.createMediaStreamSource(mediaStream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    src.connect(analyser);
+
+    // volume feedback
+    const dataArr = new Uint8Array(analyser.frequencyBinCount);
+    const volumeTick = () => {
+      analyser.getByteFrequencyData(dataArr);
+      const avg = dataArr.reduce((a, b) => a + b, 0) / dataArr.length / 255;
+      chrome.runtime.sendMessage({ type: 'volume', value: avg });
+      raf = requestAnimationFrame(volumeTick);
+    };
+    let raf = requestAnimationFrame(volumeTick);
+
+    // chunk recorder
+    mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 32000 });
+    mediaRecorder.ondataavailable = async (e) => {
+      if (!e.data || !e.data.size) return;
+      const b64 = await blobToDataURL(e.data);
+      // send to backend for Whisper transcription
+      try {
+        const res = await fetch(`${apiBase}/api/transcribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audioBase64: b64, mimeType: e.data.type, sessionId })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.text) {
+            chrome.runtime.sendMessage({ type: 'transcript-chunk', text: data.text });
+          }
+        } else {
+          const t = await res.text();
+          chrome.runtime.sendMessage({ type: 'error', message: `STT HTTP ${res.status}: ${t}` });
+        }
+      } catch (err) {
+        chrome.runtime.sendMessage({ type: 'error', message: 'STT send failed' });
+      }
+    };
+    mediaRecorder.start(2500); // 2.5s chunks
+  } catch (e) {
+    chrome.runtime.sendMessage({ type: 'error', message: 'Capture failed: ' + e.message });
+  }
+}
+
+async function stopCapture() {
+  try {
+    mediaRecorder?.stop();
+  } catch {}
+  try {
+    mediaStream?.getTracks().forEach(t => t.stop());
+  } catch {}
+}
+
+function blobToDataURL(blob) {
+  return new Promise((resolve) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.readAsDataURL(blob);
+  });
+}

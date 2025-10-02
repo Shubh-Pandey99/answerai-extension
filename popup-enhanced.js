@@ -1,458 +1,255 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const toggleTabAudio = document.getElementById('toggle-tab-audio');
-  const toggleMicAudio = document.getElementById('toggle-mic-audio');
-  const waveform = document.querySelector('.waveform');
+  // UI refs
+  const listenMode = document.getElementById('listen-mode');
+  const toggleMic = document.getElementById('toggle-mic');
+  const micIcon = document.getElementById('mic-icon');
+  const waveform = document.getElementById('waveform');
+  const bars = waveform.querySelectorAll('.bar');
+  const transcriptEl = document.getElementById('live-transcript');
   const statusText = document.getElementById('status-text');
   const liveDot = document.getElementById('live-dot');
-  const transcriptPopup = document.getElementById('live-transcript-popup');
+
+  const captureBtn = document.getElementById('capture-screen');
+  const summarizeImageBtn = document.getElementById('summarize-image');
+  const annotateBtn = document.getElementById('annotate-image');
+  const saveAnnotationBtn = document.getElementById('save-annotation');
+  const screenshotPreview = document.getElementById('screenshot-preview');
+  const annotationCanvas = document.getElementById('annotation-canvas');
+
+  const askInput = document.getElementById('ask-input');
   const qqaResponse = document.getElementById('qqa-response');
   const summarizeBtn = document.getElementById('summarize');
-  const askInput = document.getElementById('ask-input');
-  const askMicBtn = document.getElementById('ask-mic');
-  const screenshotPreview = document.getElementById('screenshot-preview');
-  const captureScreenBtn = document.getElementById('capture-screen');
-  const summarizeImageBtn = document.getElementById('summarize-image');
-  const annotateImageBtn = document.getElementById('annotate-image');
-  const saveAnnotationBtn = document.getElementById('save-annotation');
-  const annotationCanvas = document.getElementById('annotation-canvas');
-  const providerSelect = document.getElementById('provider-select');
-  const saveSettingsBtn = document.getElementById('save-settings');
-  const vercelUrlInput = document.getElementById('vercel-url-input');
-  const notificationToggle = document.getElementById('notification-toggle');
-  const ttsToggle = document.getElementById('tts-toggle');
-  const speakResponseBtn = document.getElementById('speak-response');
-  const micIcon = document.getElementById('mic-icon');
+  const speakBtn = document.getElementById('speak-response');
 
-  let fullTranscript = '';
-  let screenshotUrl = null;
-  let isDrawing = false;
-  let lastX = 0;
-  let lastY = 0;
+  const providerSelect = document.getElementById('provider-select');
+  const modelSelect = document.getElementById('model-select');
+  const urlInput = document.getElementById('vercel-url-input');
+  const saveSettingsBtn = document.getElementById('save-settings');
+  const notifToggle = document.getElementById('notification-toggle');
+  const ttsToggle = document.getElementById('tts-toggle');
+
+  // State
+  let screenshotDataUrl = null;
   let notificationsEnabled = true;
   let ttsEnabled = true;
-  let isMicRecording = false;
   let micRecognition = null;
-
-  const modelSelect = document.getElementById('model-select');
-  const waveformBars = document.querySelectorAll('.waveform .bar');
+  let isMicDictating = false;
+  let aggregatedTranscript = '';
 
   // Load settings
-  chrome.storage.local.get(['provider', 'vercelUrl', 'model', 'notifications', 'tts'], (res) => {
-    if (res.provider) providerSelect.value = res.provider;
-    else providerSelect.value = 'openai';
-    if (res.vercelUrl) vercelUrlInput.value = res.vercelUrl;
-    if (res.model) modelSelect.value = res.model;
-    else modelSelect.value = 'gpt-5';
-    
-    notificationsEnabled = res.notifications !== false;
-    ttsEnabled = res.tts !== false;
-    
-    updateStatusIndicators();
+  chrome.storage.local.get(['provider','model','vercelUrl','notifications','tts'], (s) => {
+    providerSelect.value = s.provider || 'google';
+    modelSelect.value = s.model || (s.provider === 'openai' ? 'gpt-4o' : 'gemini-2.5-pro');
+    urlInput.value = s.vercelUrl || 'http://127.0.0.1:5055';
+    notificationsEnabled = s.notifications !== false;
+    ttsEnabled = s.tts !== false;
   });
 
-  // Request notification permission
-  if (Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
+  // Save settings
+  saveSettingsBtn.addEventListener('click', () => {
+    chrome.storage.local.set({
+      provider: providerSelect.value,
+      model: modelSelect.value,
+      vercelUrl: urlInput.value,
+      notifications: notificationsEnabled,
+      tts: ttsEnabled
+    }, () => {
+      toast('Settings saved');
+    });
+  });
 
-  // Update status indicators
-  function updateStatusIndicators() {
-    const notificationStatus = document.getElementById('notification-status');
-    const ttsStatus = document.getElementById('tts-status');
-    
-    notificationStatus.style.opacity = notificationsEnabled ? '1' : '0.3';
-    ttsStatus.style.opacity = ttsEnabled ? '1' : '0.3';
-  }
-
-  // Notification toggle
-  notificationToggle.addEventListener('click', () => {
+  // Notifications & TTS toggles
+  notifToggle.addEventListener('click', () => {
     notificationsEnabled = !notificationsEnabled;
-    chrome.storage.local.set({ notifications: notificationsEnabled });
-    updateStatusIndicators();
-    
-    if (notificationsEnabled && Notification.permission !== 'granted') {
-      Notification.requestPermission();
-    }
+    if (notificationsEnabled && Notification.permission === 'default') Notification.requestPermission();
+    toast('Notifications ' + (notificationsEnabled ? 'on' : 'off'));
   });
-
-  // TTS toggle
   ttsToggle.addEventListener('click', () => {
     ttsEnabled = !ttsEnabled;
-    chrome.storage.local.set({ tts: ttsEnabled });
-    updateStatusIndicators();
+    toast('TTS ' + (ttsEnabled ? 'on' : 'off'));
   });
 
-  // Text-to-speech function
-  function speakText(text) {
-    if (!ttsEnabled) return;
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    utterance.volume = 0.8;
-    speechSynthesis.speak(utterance);
-  }
-
-  // Speak response button
-  speakResponseBtn.addEventListener('click', () => {
-    const responseText = qqaResponse.textContent || qqaResponse.innerText;
-    if (responseText && responseText.trim() !== '') {
-      speakText(responseText);
-    }
+  // Listen mode (tab audio capture)
+  listenMode.addEventListener('change', () => {
+    chrome.runtime.sendMessage({ type: 'toggle-recording' });
   });
 
-  function animateWaveform(audioData) {
-    let sum = 0;
-    for (let i = 0; i < audioData.length; i++) sum += audioData[i] ** 2;
-    const rms = Math.sqrt(sum / audioData.length);
-
-    waveformBars.forEach((bar, idx) => {
-      const scale = Math.min(1, rms * 10 + Math.random() * 0.5);
-      bar.style.height = `${Math.max(4, scale * 24)}px`;
-      bar.style.opacity = 0.3 + scale * 0.7;
-    });
-  }
-
-  function updateUIRecording() {
-    toggleTabAudio.checked = true;
-    waveform.style.display = 'flex';
-    statusText.textContent = 'Status: Active & Listening...';
-    liveDot.classList.remove('hidden');
-    transcriptPopup.classList.remove('hidden');
-    transcriptPopup.textContent = 'Starting transcription...';
-    fullTranscript = '';
-  }
-
-  function updateUIIdle() {
-    toggleTabAudio.checked = false;
-    waveform.style.display = 'none';
-    statusText.textContent = 'Status: Inactive';
-    liveDot.classList.add('hidden');
-    waveformBars.forEach(bar => {
-      bar.style.height = '4px';
-      bar.style.opacity = 0.3;
-    });
-  }
-
-  // Microphone recording for Q&A
-  function initializeMicRecording() {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      micRecognition = new SpeechRecognition();
+  // Mic dictation (for building the transcript inside popup)
+  toggleMic.addEventListener('click', () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { toast('Speech recognition not supported'); return; }
+    if (!micRecognition) {
+      micRecognition = new SR();
+      micRecognition.lang = 'en-US';
       micRecognition.continuous = true;
       micRecognition.interimResults = true;
-      micRecognition.lang = 'en-US';
-      
-      micRecognition.onstart = () => {
-        isMicRecording = true;
-        micIcon.textContent = '🔴';
-        toggleMicAudio.textContent = '🔴 Stop Microphone';
-        statusText.textContent = 'Status: Microphone Active';
-      };
-      
-      micRecognition.onresult = (event) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        fullTranscript += transcript + ' ';
-        transcriptPopup.textContent = fullTranscript;
-        transcriptPopup.classList.remove('hidden');
-      };
-      
-      micRecognition.onend = () => {
-        isMicRecording = false;
-        micIcon.textContent = '🎤';
-        toggleMicAudio.textContent = '🎤 Microphone';
-        statusText.textContent = 'Status: Inactive';
-      };
-      
-      micRecognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        isMicRecording = false;
-        micIcon.textContent = '🎤';
-        toggleMicAudio.textContent = '🎤 Microphone';
+      micRecognition.onstart = () => { isMicDictating = true; micIcon.textContent = '🔴'; };
+      micRecognition.onend = () => { isMicDictating = false; micIcon.textContent = '🎤'; };
+      micRecognition.onerror = () => { isMicDictating = false; micIcon.textContent = '🎤'; };
+      micRecognition.onresult = (e) => {
+        let s = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) s += e.results[i][0].transcript;
+        aggregatedTranscript += s + ' ';
+        transcriptEl.textContent = aggregatedTranscript;
+        transcriptEl.scrollTop = transcriptEl.scrollHeight;
       };
     }
-  }
-
-  // Initialize microphone recording
-  initializeMicRecording();
-
-  // Microphone toggle
-  toggleMicAudio.addEventListener('click', () => {
-    if (!micRecognition) {
-      qqaResponse.textContent = 'Speech recognition not supported in this browser.';
-      return;
-    }
-    
-    if (isMicRecording) {
-      micRecognition.stop();
-    } else {
-      micRecognition.start();
-    }
+    if (isMicDictating) micRecognition.stop(); else micRecognition.start();
   });
 
-  // Canvas annotation setup
-  function setupAnnotationCanvas() {
-    const ctx = annotationCanvas.getContext('2d');
-    ctx.strokeStyle = '#ff0000';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
+  // Screen capture
+  captureBtn.addEventListener('click', () => {
+    chrome.tabs.captureVisibleTab({ format: 'png' }, (dataUrl) => {
+      if (!dataUrl) { toast('Capture failed'); return; }
+      screenshotDataUrl = dataUrl;
+      screenshotPreview.src = dataUrl;
+      screenshotPreview.classList.remove('hidden');
 
-    annotationCanvas.addEventListener('mousedown', (e) => {
-      isDrawing = true;
-      [lastX, lastY] = [e.offsetX, e.offsetY];
-    });
-
-    annotationCanvas.addEventListener('mousemove', (e) => {
-      if (!isDrawing) return;
-      ctx.beginPath();
-      ctx.moveTo(lastX, lastY);
-      ctx.lineTo(e.offsetX, e.offsetY);
-      ctx.stroke();
-      [lastX, lastY] = [e.offsetX, e.offsetY];
-    });
-
-    annotationCanvas.addEventListener('mouseup', () => isDrawing = false);
-    annotationCanvas.addEventListener('mouseout', () => isDrawing = false);
-  }
-
-  setupAnnotationCanvas();
-
-  // Listen to messages from background
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === 'recording-started') {
-      updateUIRecording();
-      if (notificationsEnabled) {
-        chrome.runtime.sendMessage({ type: 'show-notification', title: 'AI Meeting Assistant', body: 'Recording started' });
-      }
-    }
-    if (message.type === 'recording-stopped') {
-      updateUIIdle();
-      if (notificationsEnabled) {
-        chrome.runtime.sendMessage({ type: 'show-notification', title: 'AI Meeting Assistant', body: 'Recording stopped' });
-      }
-    }
-    if (message.type === 'transcript-update') {
-      fullTranscript += message.transcript + ' ';
-      transcriptPopup.textContent = fullTranscript;
-      transcriptPopup.classList.remove('hidden');
-    }
-    if (message.type === 'audio-data') animateWaveform(message.data);
-  });
-
-  toggleTabAudio.addEventListener('change', () => {
-    chrome.runtime.sendMessage({ target: 'background', type: 'toggle-recording' });
-  });
-
-  saveSettingsBtn.addEventListener('click', () => {
-    const provider = providerSelect.value;
-    const vercelUrl = vercelUrlInput.value;
-    const model = modelSelect.value;
-    chrome.storage.local.set({ provider, vercelUrl, model, notifications: notificationsEnabled, tts: ttsEnabled }, () => {
-      saveSettingsBtn.textContent = 'Saved!';
-      setTimeout(() => { saveSettingsBtn.textContent = 'Save Settings'; }, 1500);
+      // Draw into canvas for annotation prep
+      const img = new Image();
+      img.onload = () => {
+        const ctx = annotationCanvas.getContext('2d');
+        const scale = Math.min(1, 800 / img.width);
+        annotationCanvas.width = img.width * scale;
+        annotationCanvas.height = img.height * scale;
+        ctx.drawImage(img, 0, 0, annotationCanvas.width, annotationCanvas.height);
+        annotateBtn.classList.remove('hidden');
+        saveAnnotationBtn.classList.add('hidden');
+        summarizeImageBtn.classList.remove('hidden');
+      };
+      img.src = dataUrl;
     });
   });
 
-  // Q&A Mic for voice input
-  askMicBtn.addEventListener('click', () => {
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'en-US';
-    recognition.onstart = () => { askInput.placeholder = 'Listening...'; askMicBtn.classList.add('recording'); };
-    recognition.onresult = (event) => { askInput.value = event.results[0][0].transcript; };
-    recognition.onerror = (event) => { askInput.placeholder = 'Error listening.'; };
-    recognition.onend = () => { askInput.placeholder = 'Ask anything...'; askMicBtn.classList.remove('recording'); };
-    recognition.start();
-  });
-
-  // Screen capture functionality
-  captureScreenBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'get-state' }, (response) => {
-      if (chrome.runtime.lastError) {
-        console.error(chrome.runtime.lastError);
-        return;
-      }
-      if (response && response.isRecording) {
-        qqaResponse.textContent = 'Cannot capture screen while tab audio is being recorded.';
-        return;
-      }
-      chrome.tabs.captureVisibleTab({ format: 'png' }, (url) => {
-        if (url) {
-          screenshotUrl = url;
-          screenshotPreview.src = url;
-          screenshotPreview.classList.remove('hidden');
-          
-          // Setup canvas with screenshot
-          const ctx = annotationCanvas.getContext('2d');
-          const img = new Image();
-          img.onload = () => {
-            annotationCanvas.width = img.width * 0.5;
-            annotationCanvas.height = img.height * 0.5;
-            ctx.drawImage(img, 0, 0, annotationCanvas.width, annotationCanvas.height);
-          };
-          img.src = url;
-          
-          summarizeImageBtn.classList.remove('hidden');
-          annotateImageBtn.classList.remove('hidden');
-          captureScreenBtn.classList.add('hidden');
-        } else {
-          qqaResponse.textContent = 'Failed to capture screenshot.';
-        }
-      });
-    });
-  });
-
-  // Annotation functionality
-  annotateImageBtn.addEventListener('click', () => {
+  // Annotate
+  let drawing = false, lx = 0, ly = 0;
+  annotateBtn.addEventListener('click', () => {
     screenshotPreview.classList.add('hidden');
     annotationCanvas.classList.remove('hidden');
+    const ctx = annotationCanvas.getContext('2d');
+    ctx.lineWidth = 3; ctx.strokeStyle = '#ff5b5b'; ctx.lineCap = 'round';
+    annotationCanvas.onmousedown = e => { drawing = true; [lx, ly] = [e.offsetX, e.offsetY]; };
+    annotationCanvas.onmousemove = e => {
+      if (!drawing) return; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); [lx, ly] = [e.offsetX, e.offsetY];
+    };
+    annotationCanvas.onmouseup = () => drawing = false;
+    annotationCanvas.onmouseleave = () => drawing = false;
     saveAnnotationBtn.classList.remove('hidden');
-    annotateImageBtn.textContent = '✏️ Annotating...';
   });
-
   saveAnnotationBtn.addEventListener('click', () => {
-    screenshotUrl = annotationCanvas.toDataURL();
-    screenshotPreview.src = screenshotUrl;
+    screenshotDataUrl = annotationCanvas.toDataURL('image/png');
     annotationCanvas.classList.add('hidden');
+    screenshotPreview.src = screenshotDataUrl;
     screenshotPreview.classList.remove('hidden');
     saveAnnotationBtn.classList.add('hidden');
-    annotateImageBtn.textContent = '✏️ Annotate';
   });
 
-  // Send screenshot for analysis
-  summarizeImageBtn.addEventListener('click', () => {
-    if (screenshotUrl) {
-      getSummaryForImage(screenshotUrl);
+  // Summarize image
+  summarizeImageBtn.addEventListener('click', async () => {
+    if (!screenshotDataUrl) return toast('No screenshot captured');
+    qqaResponse.textContent = 'Analyzing image...';
+    try {
+      const data = await apiCall({ imageBase64: screenshotDataUrl });
+      const text = data.answer || 'No analysis received.';
+      qqaResponse.innerHTML = format(text);
+      if (ttsEnabled) speak('Image analysis ready. ' + text.slice(0, 120));
+      notify('Image analysis ready');
+    } catch (e) {
+      qqaResponse.textContent = 'Error: ' + e.message;
     }
   });
 
   // Summarize transcript
-  summarizeBtn.addEventListener('click', () => {
-    if (fullTranscript && fullTranscript.trim() !== '') {
-      getSummary(fullTranscript);
-    } else {
-      qqaResponse.textContent = 'Nothing to summarize yet.';
-    }
-  });
-
-  // Enhanced API Call Functions
-  async function makeApiCall(payload, retries = 3) {
-    const { provider, vercelUrl, model } = await new Promise(resolve => 
-      chrome.storage.local.get(['provider', 'vercelUrl', 'model'], resolve)
-    );
-    
-    if (!vercelUrl) {
-      throw new Error('Please set the Vercel URL in the settings.');
-    }
-    
-    const useGPT5 = model === 'gpt-5';
-    const requestPayload = {
-      ...payload,
-      provider: provider || 'openai',
-      useGPT5: useGPT5
-    };
-    
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        const res = await fetch(`${vercelUrl}/api/answer`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestPayload)
-        });
-        
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-        }
-        
-        const data = await res.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        
-        return data;
-      } catch (error) {
-        if (attempt === retries) {
-          throw error;
-        }
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-      }
-    }
-  }
-  
-  async function getSummary(transcript) {
-    qqaResponse.textContent = 'Analyzing with AI...';
+  summarizeBtn.addEventListener('click', async () => {
+    const text = transcriptEl.textContent.trim() || aggregatedTranscript.trim();
+    if (!text) return toast('Nothing to summarize');
+    qqaResponse.textContent = 'Summarizing...';
     try {
-      const data = await makeApiCall({
-        transcript: `Please provide a concise summary with key points and action items from this meeting transcript: ${transcript}`
+      const data = await apiCall({
+        transcript: `Summarize key points and action items from this meeting:\n\n${text}`
       });
-      const response = data.answer || 'No summary received.';
-      qqaResponse.innerHTML = formatResponse(response);
-      
-      if (ttsEnabled) {
-        speakText("Summary ready. " + response.substring(0, 100) + "...");
-      }
-      
-      if (notificationsEnabled) {
-        chrome.runtime.sendMessage({ type: 'show-notification', title: 'AI Meeting Assistant', body: 'Summary ready' });
-      }
-    } catch (error) {
-      qqaResponse.textContent = `Error: ${error.message}`;
-      console.error('Summary error:', error);
-    }
-  }
-  
-  function formatResponse(text) {
-    return text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/\n/g, '<br>');
-  }
-
-  async function getSummaryForImage(imageUrl) {
-    qqaResponse.textContent = 'Analyzing image with AI...';
-    try {
-      const data = await makeApiCall({ imageUrl });
-      const response = data.answer || 'No analysis received.';
-      qqaResponse.innerHTML = formatResponse(response);
-      
-      if (ttsEnabled) {
-        speakText("Image analysis ready. " + response.substring(0, 100) + "...");
-      }
-      
-      if (notificationsEnabled) {
-        chrome.runtime.sendMessage({ type: 'show-notification', title: 'AI Meeting Assistant', body: 'Image analysis ready' });
-      }
-    } catch (error) {
-      qqaResponse.textContent = `Error: ${error.message}`;
-      console.error('Image analysis error:', error);
-    }
-  }
-  
-  // Enhanced Q&A functionality
-  askInput.addEventListener('keypress', async (e) => {
-    if (e.key === 'Enter' && askInput.value.trim()) {
-      const question = askInput.value.trim();
-      const context = fullTranscript ? `Context: ${fullTranscript}\n\nQuestion: ${question}` : question;
-      
-      qqaResponse.textContent = 'Getting AI response...';
-      try {
-        const data = await makeApiCall({ transcript: context });
-        const response = data.answer || 'No response received.';
-        qqaResponse.innerHTML = formatResponse(response);
-        askInput.value = '';
-        
-        if (ttsEnabled) {
-          speakText(response);
-        }
-        
-        if (notificationsEnabled) {
-          chrome.runtime.sendMessage({ type: 'show-notification', title: 'AI Meeting Assistant', body: 'AI response ready' });
-        }
-      } catch (error) {
-        qqaResponse.textContent = `Error: ${error.message}`;
-      }
+      const out = data.answer || 'No summary received.';
+      qqaResponse.innerHTML = format(out);
+      if (ttsEnabled) speak('Summary ready. ' + out.slice(0, 120));
+      notify('Summary ready');
+    } catch (e) {
+      qqaResponse.textContent = 'Error: ' + e.message;
     }
   });
+
+  // Ask box
+  askInput.addEventListener('keypress', async (e) => {
+    if (e.key !== 'Enter') return;
+    const question = askInput.value.trim();
+    if (!question) return;
+    askInput.value = '';
+    qqaResponse.textContent = 'Thinking...';
+    try {
+      const ctx = transcriptEl.textContent ? `Context:\n${transcriptEl.textContent}\n\n` : '';
+      const data = await apiCall({ transcript: ctx + 'Question: ' + question });
+      qqaResponse.innerHTML = format(data.answer || 'No response.');
+      speak(data.answer || '');
+      notify('Answer ready');
+    } catch (err) {
+      qqaResponse.textContent = 'Error: ' + err.message;
+    }
+  });
+
+  // TALK to background: live transcription state & volume
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'recording-started') {
+      statusText.textContent = 'Status: Activating...';
+      liveDot.classList.remove('hidden');
+    }
+    if (msg.type === 'recording-stopped') {
+      statusText.textContent = 'Status: Inactive';
+      liveDot.classList.add('hidden');
+      bars.forEach(b => { b.style.height = '6px'; b.style.opacity = .35; });
+    }
+    if (msg.type === 'volume') {
+      const v = Math.min(1, msg.value || 0);
+      bars.forEach((b,i) => {
+        const scale = Math.max(0.08, v * (0.5 + i*0.12));
+        b.style.height = `${6 + scale*26}px`;
+        b.style.opacity = 0.3 + scale*0.6;
+      });
+      statusText.textContent = 'Status: Live';
+    }
+    if (msg.type === 'transcript-chunk') {
+      aggregatedTranscript += (msg.text || '') + ' ';
+      transcriptEl.textContent = aggregatedTranscript;
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    }
+    if (msg.type === 'error') {
+      toast(msg.message || 'Error');
+    }
+  });
+
+  // Utils
+  function toast(t){ console.log('[AI Assistant]', t); }
+  function speak(t){ if (!t || !ttsEnabled) return; const u = new SpeechSynthesisUtterance(t); u.rate=.95; speechSynthesis.speak(u); }
+  function notify(msg){
+    if (!notificationsEnabled) return;
+    if (Notification.permission === 'granted') new Notification('AI Meeting Assistant', { body: msg, icon: chrome.runtime.getURL('icon.png') });
+  }
+  function format(t){ return t.replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\*(.*?)\*/g,'<i>$1</i>').replace(/\n/g,'<br>'); }
+
+  async function apiCall(payload){
+    const { provider, vercelUrl, model } = await new Promise(r => chrome.storage.local.get(['provider','vercelUrl','model'], r));
+    if (!vercelUrl) throw new Error('Set API URL in Settings');
+    return fetch(`${vercelUrl}/api/answer`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        provider: (provider||'google'),
+        model,
+        ...payload
+      })
+    }).then(async res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data;
+    });
+  }
 });
