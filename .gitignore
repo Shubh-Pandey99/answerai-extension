@@ -58,3 +58,10 @@ desktop.ini
 .env
 *.env
 .vercel
+
+# Local generated folders
+.emergent/
+.idx/
+
+# Git config file accidentally committed
+.gitconfig
