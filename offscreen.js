@@ -8,18 +8,27 @@ chrome.runtime.onMessage.addListener(async (msg) => {
   if (msg?.target !== 'offscreen') return;
   if (msg.action === 'start') {
     apiBase = msg.apiBase || apiBase;
-    await startCapture();
+    await startCapture(msg.streamId);
   }
   if (msg.action === 'stop') {
     await stopCapture();
   }
 });
 
-async function startCapture() {
+async function startCapture(streamId) {
   try {
-    // Prefer tab audio; if fails, fall back to mic
-    mediaStream = await chrome.tabCapture.capture({ audio: true, video: false });
-    if (!mediaStream) {
+    if (streamId) {
+      // Use the streamId from the background script
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          mandatory: {
+            chromeMediaSource: 'tab',
+            chromeMediaSourceId: streamId
+          }
+        }
+      });
+    } else {
+      // Fallback to microphone if no streamId
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     }
 

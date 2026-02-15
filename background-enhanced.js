@@ -24,10 +24,28 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
 async function toggleRecording() {
   if (!isRecording) {
+    // Get the active tab to capture its audio
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab) {
+      console.error("No active tab found");
+      return;
+    }
+
+    // Get a stream ID for the tab's audio
+    // This requires the 'tabCapture' permission
+    const streamId = await new Promise((resolve) => {
+      chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id }, (id) => resolve(id));
+    });
+
     await ensureOffscreenDocument();
     const conf = await new Promise(r => chrome.storage.local.get(['vercelUrl'], r));
     chrome.runtime.sendMessage({ type: 'recording-started' });
-    chrome.runtime.sendMessage({ target: 'offscreen', action: 'start', apiBase: conf.vercelUrl || 'http://127.0.0.1:5055' });
+    chrome.runtime.sendMessage({
+      target: 'offscreen',
+      action: 'start',
+      streamId,
+      apiBase: conf.vercelUrl || 'https://spatial-expanse.vercel.app'
+    });
     isRecording = true;
   } else {
     chrome.runtime.sendMessage({ target: 'offscreen', action: 'stop' });

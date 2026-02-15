@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
   chrome.storage.local.get(['provider', 'model', 'vercelUrl', 'notifications', 'tts'], (s) => {
     providerSelect.value = s.provider || 'google';
     modelSelect.value = s.model || (s.provider === 'openai' ? 'gpt-4o' : 'gemini-1.5-flash');
-    urlInput.value = s.vercelUrl || ''; // Leave empty so user knows to set it
+    urlInput.value = s.vercelUrl || 'https://spatial-expanse.vercel.app'; // Pre-fill with cloud URL
     notificationsEnabled = s.notifications !== false;
     ttsEnabled = s.tts !== false;
   });
@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function apiCall(payload) {
     const { provider, vercelUrl, model } = await new Promise(r => chrome.storage.local.get(['provider', 'vercelUrl', 'model'], r));
-    const url = vercelUrl || 'http://127.0.0.1:5055';
+    const url = vercelUrl || 'https://spatial-expanse.vercel.app';
     return fetch(`${url}/api/answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function saveSessionToDashboard() {
     const { vercelUrl } = await new Promise(r => chrome.storage.local.get(['vercelUrl'], r));
-    const url = vercelUrl || 'http://127.0.0.1:5055';
+    const url = vercelUrl || 'https://spatial-expanse.vercel.app';
     fetch(`${url}/api/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
