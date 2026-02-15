@@ -71,8 +71,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Open Dashboard
   dashboardLink.addEventListener('click', () => {
-    const dashboardUrl = 'http://localhost:3000'; // Target dashboard URL
-    chrome.tabs.create({ url: dashboardUrl });
+    chrome.storage.local.get(['vercelUrl'], (s) => {
+      const dashboardUrl = s.vercelUrl || 'https://spatial-expanse.vercel.app';
+      chrome.tabs.create({ url: dashboardUrl });
+    });
   });
 
   // Listen mode (tab audio capture)

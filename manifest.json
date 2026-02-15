@@ -3,7 +3,9 @@
   "name": "AI Meeting Assistant",
   "version": "2.0.0",
   "description": "Live transcription, screenshot understanding, and real-time Q&A with OpenAI/Gemini.",
-  "background": { "service_worker": "background-enhanced.js" },
+  "background": {
+    "service_worker": "background-enhanced.js"
+  },
   "permissions": [
     "storage",
     "tabs",
@@ -18,9 +20,14 @@
   ],
   "host_permissions": [
     "http://127.0.0.1:5055/*",
-    "http://localhost:5055/*"
+    "http://localhost:5055/*",
+    "https://*.vercel.app/*"
   ],
+  "icons": {
+    "128": "icon.png"
+  },
   "action": {
+    "default_icon": "icon.png",
     "default_title": "Open AI Assistant Panel"
   },
   "side_panel": {
@@ -28,14 +35,24 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content-script.js"]
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content-script.js"
+      ]
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["panel.html", "panel.css", "icon.png"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "icon.png",
+        "sidepanel.html",
+        "sidepanel.css"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

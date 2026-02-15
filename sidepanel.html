@@ -1,10 +1,12 @@
 <!doctype html>
 <html>
+
 <head>
   <meta charset="utf-8" />
   <title>AI Meeting Assistant - Side Panel</title>
   <link rel="stylesheet" href="sidepanel.css" />
 </head>
+
 <body>
   <div class="container">
     <header class="header">
@@ -38,9 +40,14 @@
         </div>
 
         <div class="waveform" id="waveform">
-          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-          <div class="bar"></div><div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
         </div>
 
         <div id="live-transcript" class="transcript">Waiting for audio...</div>
@@ -79,8 +86,10 @@
           <option value="openai">OpenAI</option>
         </select>
         <select id="model-select">
-          <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+          <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+          <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
           <option value="gpt-4o">GPT-4o</option>
+          <option value="gpt-4o-mini">GPT-4o Mini</option>
         </select>
         <input id="vercel-url-input" placeholder="Backend URL (http://...)" />
         <button id="save-settings" class="primary block">Update Config</button>
@@ -96,4 +105,5 @@
 
   <script src="sidepanel.js"></script>
 </body>
+
 </html>
