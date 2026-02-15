@@ -70,11 +70,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function startSession() {
     sessionId = crypto.randomUUID();
     aggregatedTranscript = '';
-    transcriptEl.innerHTML = '<div class="transcribing">Initializing audio stream...</div>';
+    transcriptEl.innerHTML = '<div class="transcribing">Connecting to audio stream...</div>';
 
     chrome.runtime.sendMessage({ type: 'toggle-recording' }, (response) => {
       if (chrome.runtime.lastError) {
-        toast('Error: Please click the extension icon to grant permission.');
+        toast('Extension Sync Error: ' + chrome.runtime.lastError.message);
+        updateUIStopped();
         return;
       }
       updateUIStarted();
@@ -105,11 +106,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Capture Screen
-  captureBtn.addEventListener('click', () => {
+  captureBtn.addEventListener('click', async () => {
+    // Check if we have host permissions for the current tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) return;
+
     chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
       if (chrome.runtime.lastError) {
-        toast('Action Required: Click the extension icon once to allow capture.');
-        console.error(chrome.runtime.lastError.message);
+        const err = chrome.runtime.lastError.message;
+        if (err.includes('permission')) {
+          toast('🔒 Access Denied: Right-click the extension icon -> "This can read and change site data" -> "On all sites"');
+        } else {
+          toast('Capture Error: ' + err);
+        }
         return;
       }
       if (!dataUrl) { toast('Capture failed'); return; }

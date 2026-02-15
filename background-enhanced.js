@@ -23,33 +23,41 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 async function toggleRecording() {
-  if (!isRecording) {
-    // Get the active tab to capture its audio
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    if (!tab) {
-      console.error("No active tab found");
-      return;
+  try {
+    if (!isRecording) {
+      // Get the active tab to capture its audio
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      if (!tab) {
+        chrome.runtime.sendMessage({ type: 'error', message: "No active tab found. Please click into a website first." });
+        return;
+      }
+
+      // Get a stream ID for the tab's audio
+      const streamId = await new Promise((resolve, reject) => {
+        chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id }, (id) => {
+          if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+          else resolve(id);
+        });
+      });
+
+      await ensureOffscreenDocument();
+      const conf = await new Promise(r => chrome.storage.local.get(['vercelUrl'], r));
+      chrome.runtime.sendMessage({ type: 'recording-started' });
+      chrome.runtime.sendMessage({
+        target: 'offscreen',
+        action: 'start',
+        streamId,
+        apiBase: conf.vercelUrl || 'https://spatial-expanse.vercel.app'
+      });
+      isRecording = true;
+    } else {
+      chrome.runtime.sendMessage({ target: 'offscreen', action: 'stop' });
+      chrome.runtime.sendMessage({ type: 'recording-stopped' });
+      isRecording = false;
     }
-
-    // Get a stream ID for the tab's audio
-    // This requires the 'tabCapture' permission
-    const streamId = await new Promise((resolve) => {
-      chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id }, (id) => resolve(id));
-    });
-
-    await ensureOffscreenDocument();
-    const conf = await new Promise(r => chrome.storage.local.get(['vercelUrl'], r));
-    chrome.runtime.sendMessage({ type: 'recording-started' });
-    chrome.runtime.sendMessage({
-      target: 'offscreen',
-      action: 'start',
-      streamId,
-      apiBase: conf.vercelUrl || 'https://spatial-expanse.vercel.app'
-    });
-    isRecording = true;
-  } else {
-    chrome.runtime.sendMessage({ target: 'offscreen', action: 'stop' });
-    chrome.runtime.sendMessage({ type: 'recording-stopped' });
+  } catch (err) {
+    console.error("Recording toggle failed:", err);
+    chrome.runtime.sendMessage({ type: 'error', message: "Start failed: " + err.message + ". Try refreshing the page you're on." });
     isRecording = false;
   }
 }
