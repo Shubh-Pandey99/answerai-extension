@@ -4,17 +4,23 @@ let isRecording = false;
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
-    id: 'toggle-recording',
-    title: 'AI Assistant: Start/Stop Live Transcription',
-    contexts: ['action']
+    id: 'start-recording-context',
+    title: 'Start AI Assistant Recording',
+    contexts: ['page']
   });
-  // Enable side panel on click
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
-    .catch((error) => console.error(error));
+  chrome.contextMenus.create({
+    id: 'capture-screen-context',
+    title: 'Capture Screen for AI Analysis',
+    contexts: ['page']
+  });
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 });
 
-chrome.contextMenus.onClicked.addListener((info) => {
-  if (info.menuItemId === 'toggle-recording') toggleRecording();
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'start-recording-context') toggleRecording();
+  if (info.menuItemId === 'capture-screen-context') {
+    chrome.runtime.sendMessage({ type: 'trigger-capture' });
+  }
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

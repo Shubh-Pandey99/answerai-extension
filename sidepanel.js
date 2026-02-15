@@ -220,6 +220,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Background Messages
   chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'trigger-capture') {
+      captureBtn.click();
+    }
+
     if (msg.type === 'recording-started') updateUIStarted();
     if (msg.type === 'recording-stopped') updateUIStopped();
 
