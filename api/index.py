@@ -106,11 +106,17 @@ class GoogleProvider(BaseProvider):
             resp = self.model.generate_content(parts)
             return {"answer": resp.text}
         except Exception as e:
-            if "not found" in str(e).lower() or "404" in str(e):
-                log.warning("Primary model %s not found, trying fallback gemini-pro", self.model_name)
-                fallback_model = genai.GenerativeModel("gemini-pro")
-                resp = fallback_model.generate_content(parts)
-                return {"answer": resp.text}
+            err_msg = str(e).lower()
+            if "not found" in err_msg or "404" in err_msg:
+                log.warning("Primary model %s failed, trying fallback gemini-1.5-pro. Error: %s", self.model_name, e)
+                try:
+                    fallback_model = genai.GenerativeModel("gemini-1.5-pro")
+                    resp = fallback_model.generate_content(parts)
+                    return {"answer": resp.text}
+                except Exception as e2:
+                    log.error("Fallback to gemini-1.5-pro failed: %s", e2)
+                    return {"error": f"Model error: {str(e2)}"}
+            log.error("Gemini primary failure: %s", e)
             raise e
 
     def stream_response(self, transcript):

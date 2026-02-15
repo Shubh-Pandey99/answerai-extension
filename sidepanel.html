@@ -21,85 +21,116 @@
     </header>
 
     <div class="content-area">
-      <!-- Live Audio -->
-      <section class="card">
-        <h2>Live Audio</h2>
-        <div class="segmented">
-          <span>Tab Audio</span>
-          <label class="switch">
-            <input id="listen-mode" type="checkbox" />
-            <span class="slider"></span>
+      <!-- Recording Status -->
+      <section class="card status-card">
+        <div class="status-info">
+          <div id="recording-btn-container">
+            <button id="main-record-toggle" class="record-btn">
+              <span class="icon">🔴</span> Start Recording
+            </button>
+          </div>
+          <div class="status-badges">
+            <span id="status-text">Inactive</span>
+            <span id="live-dot" class="dot hidden"></span>
+          </div>
+        </div>
+
+        <div class="visualizer-container">
+          <div class="waveform" id="waveform">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+          </div>
+        </div>
+
+        <div id="live-transcript" class="transcript-monitor">
+          <div class="empty-state">No transcript yet. Start recording to see live captions.</div>
+        </div>
+
+        <div class="audio-source-settings hidden">
+          <label class="switch-label">
+            <input id="listen-mode" type="checkbox" checked />
+            <span class="label-text">Capture Tab Audio</span>
           </label>
-          <span>Recording</span>
         </div>
-
-        <div class="pill">
-          <button id="toggle-mic" class="pill-btn">
-            <span id="mic-icon">🎤</span> Mic Only
-          </button>
-        </div>
-
-        <div class="waveform" id="waveform">
-          <div class="bar"></div>
-          <div class="bar"></div>
-          <div class="bar"></div>
-          <div class="bar"></div>
-          <div class="bar"></div>
-          <div class="bar"></div>
-          <div class="bar"></div>
-          <div class="bar"></div>
-        </div>
-
-        <div id="live-transcript" class="transcript">Waiting for audio...</div>
       </section>
 
-      <!-- Screen Capture -->
-      <section class="card">
-        <h2>Screen Analysis</h2>
-        <button id="capture-screen" class="primary block">📷 Capture & Analyze</button>
+      <!-- Action Grid -->
+      <div class="action-grid">
+        <button id="capture-screen" class="action-card">
+          <span class="action-icon">📸</span>
+          <span class="action-label">Capture Screen</span>
+        </button>
+        <button id="summarize" class="action-card">
+          <span class="action-icon">📝</span>
+          <span class="action-label">Summarize</span>
+        </button>
+      </div>
+
+      <!-- Preview Area -->
+      <section id="capture-preview-area" class="card hidden">
+        <div class="preview-header">
+          <h3>Screen Preview</h3>
+          <button id="summarize-image" class="primary sm">AI Analyze</button>
+        </div>
         <div id="screenshot-container">
-          <img id="screenshot-preview" class="preview hidden" />
+          <img id="screenshot-preview" class="preview" />
           <canvas id="annotation-canvas" class="preview hidden"></canvas>
         </div>
-        <div class="row-actions">
-          <button id="annotate-image" class="ghost hidden">✏️ Annotate</button>
-          <button id="save-annotation" class="ghost hidden">💾 Save</button>
-          <button id="summarize-image" class="primary hidden">🧠 AI Analyze</button>
+        <div class="preview-actions">
+          <button id="annotate-image" class="ghost sm">Annotate</button>
+          <button id="save-annotation" class="ghost sm hidden">Confirm Edits</button>
         </div>
       </section>
 
-      <!-- Q&A & Summaries -->
-      <section class="card">
-        <h2>Real-time Q&A</h2>
-        <input id="ask-input" placeholder="Ask about the meeting..." />
+      <!-- AI Chat -->
+      <section class="card chat-card">
+        <h3>AI Assistant Q&A</h3>
         <div id="qqa-response" class="response hidden"></div>
-        <div class="row-actions">
-          <button id="summarize" class="ghost block">📝 Summarize Key Points</button>
+        <div class="input-group">
+          <input id="ask-input" placeholder="Ask a question about the meeting..." />
+          <button id="send-ask" class="icon-btn">🚀</button>
         </div>
       </section>
 
-      <!-- Quick Settings Toggle -->
-      <section class="card">
-        <h2>Settings</h2>
-        <select id="provider-select">
-          <option value="google">Google Gemini</option>
-          <option value="openai">OpenAI</option>
-        </select>
-        <select id="model-select">
-          <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-          <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-          <option value="gpt-4o">GPT-4o</option>
-          <option value="gpt-4o-mini">GPT-4o Mini</option>
-        </select>
-        <input id="vercel-url-input" placeholder="Backend URL (http://...)" />
-        <button id="save-settings" class="primary block">Update Config</button>
-      </section>
+      <!-- Modern Collapsible Settings -->
+      <details class="settings-details">
+        <summary>Advanced Settings</summary>
+        <div class="card settings-card">
+          <div class="field">
+            <label>Provider</label>
+            <select id="provider-select">
+              <option value="google">Google Gemini</option>
+              <option value="openai">OpenAI</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Model</label>
+            <select id="model-select">
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              <option value="gpt-4o">GPT-4o</option>
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>API Endpoint</label>
+            <input id="vercel-url-input" placeholder="https://..." />
+          </div>
+          <button id="save-settings" class="primary block">Save Configuration</button>
+        </div>
+      </details>
     </div>
 
-    <footer class="status">
-      <span id="status-text">Status: Inactive</span>
-      <span id="live-dot" class="dot hidden"></span>
-      <div id="dashboard-link" style="cursor: pointer; text-decoration: underline;">Open Dashboard ↗</div>
+    <footer class="footer-nav">
+      <div id="dashboard-link">View Meeting History ↗</div>
     </footer>
   </div>
 
