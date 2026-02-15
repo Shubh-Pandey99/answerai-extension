@@ -101,8 +101,17 @@ class GoogleProvider(BaseProvider):
         if image_base64: parts.append(self._pil_from_base64(image_base64))
         elif image_url:  parts.append(self._pil_from_url(image_url))
         if not parts: return {"error":"No input provided"}
-        resp = self.model.generate_content(parts)
-        return {"answer": resp.text}
+        
+        try:
+            resp = self.model.generate_content(parts)
+            return {"answer": resp.text}
+        except Exception as e:
+            if "not found" in str(e).lower() or "404" in str(e):
+                log.warning("Primary model %s not found, trying fallback gemini-pro", self.model_name)
+                fallback_model = genai.GenerativeModel("gemini-pro")
+                resp = fallback_model.generate_content(parts)
+                return {"answer": resp.text}
+            raise e
 
     def stream_response(self, transcript):
         yield f"data: {json.dumps({'error':'Gemini streaming not used here'})}\n\n"
