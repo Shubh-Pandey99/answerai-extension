@@ -1,5 +1,6 @@
 import os, io, json, time, base64, logging, tempfile
 from functools import wraps
+# Triggering redeploy for GOOGLE_API_VERSION=v1
 from abc import ABC, abstractmethod
 from io import BytesIO
 
