@@ -114,11 +114,12 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl) => {
       if (chrome.runtime.lastError) {
         const err = chrome.runtime.lastError.message;
-        if (err.includes('permission')) {
-          toast('🔒 Access Denied: Right-click the extension icon -> "This can read and change site data" -> "On all sites"');
+        if (err.includes('permission') || err.includes('invoked')) {
+          toast('🔒 Click the Extension Icon in the toolbar once to allow access to this page.');
         } else {
           toast('Capture Error: ' + err);
         }
+        console.error('CAPTURE_ERROR:', err);
         return;
       }
       if (!dataUrl) { toast('Capture failed'); return; }

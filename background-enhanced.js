@@ -57,7 +57,9 @@ async function toggleRecording() {
     }
   } catch (err) {
     console.error("Recording toggle failed:", err);
-    chrome.runtime.sendMessage({ type: 'error', message: "Start failed: " + err.message + ". Try refreshing the page you're on." });
+    let msg = err.message;
+    if (msg.includes('invoked')) msg = "Please click the Extension Icon in the toolbar once to grant permission.";
+    chrome.runtime.sendMessage({ type: 'error', message: "Start failed: " + msg });
     isRecording = false;
   }
 }

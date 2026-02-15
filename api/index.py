@@ -104,21 +104,19 @@ class GoogleProvider(BaseProvider):
         if not parts: return {"error":"No input provided"}
         
         try:
+            log.info("Generating content for model %s (parts: %d)", self.model_name, len(parts))
             resp = self.model.generate_content(parts)
             return {"answer": resp.text}
         except Exception as e:
-            err_msg = str(e).lower()
-            if "not found" in err_msg or "404" in err_msg:
-                log.warning("Primary model %s failed, trying fallback gemini-1.5-pro. Error: %s", self.model_name, e)
-                try:
-                    fallback_model = genai.GenerativeModel("gemini-1.5-pro")
-                    resp = fallback_model.generate_content(parts)
-                    return {"answer": resp.text}
-                except Exception as e2:
-                    log.error("Fallback to gemini-1.5-pro failed: %s", e2)
-                    return {"error": f"Model error: {str(e2)}"}
-            log.error("Gemini primary failure: %s", e)
-            raise e
+            log.warning("Primary Gemini call failed: %s", e)
+            try:
+                log.info("Trying fallback to gemini-1.5-pro")
+                fallback = genai.GenerativeModel("gemini-1.5-pro")
+                resp = fallback.generate_content(parts)
+                return {"answer": resp.text}
+            except Exception as e2:
+                log.error("Gemini critical failure: %s", e2)
+                return {"error": f"AI Error: {str(e2)}"}
 
     def stream_response(self, transcript):
         yield f"data: {json.dumps({'error':'Gemini streaming not used here'})}\n\n"
