@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnswerAI | Meeting Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="brand-box">
+                <h1>AnswerAI</h1>
+                <p style="color: var(--text-muted); margin-top: 4px;">Meeting Insights Dashboard</p>
+            </div>
+            <div class="actions">
+                <button class="stat-label"
+                    style="background: var(--glass); border: 1px solid var(--border); padding: 8px 16px; border-radius: 99px; color: var(--text);">Sync
+                    Status: Active</button>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-total">0</div>
+                <div class="stat-label">Total Meetings</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-words">0</div>
+                <div class="stat-label">Words Logged</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-latest">--</div>
+                <div class="stat-label">Last Interaction</div>
+            </div>
+        </div>
+
+        <h2 class="section-title"><span>🕒</span> Recent Sessions</h2>
+        <div class="meetings-grid" id="meetings-container">
+            <div id="empty-state">No meetings recorded yet. Start a session in the AI Assistant extension!</div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="meeting-modal">
+        <div class="modal-content">
+            <button class="close-modal" id="close-modal">×</button>
+            <div id="modal-date" class="meeting-date"></div>
+            <h2 id="modal-title" style="font-size: 2rem; margin-bottom: 24px;"></h2>
+            <div class="section-title">Transcript Context</div>
+            <div id="modal-transcript" class="full-transcript"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

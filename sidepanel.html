@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>AI Meeting Assistant - Side Panel</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="brand">
+        <img src="icon.png" class="logo" alt="logo" />
+        <h1>AI Assistant</h1>
+      </div>
+      <div class="header-actions">
+        <button id="notification-toggle" class="icon-btn" title="Toggle notifications">🔔</button>
+        <button id="tts-toggle" class="icon-btn" title="Toggle TTS">🔊</button>
+      </div>
+    </header>
+
+    <div class="content-area">
+      <!-- Live Audio -->
+      <section class="card">
+        <h2>Live Audio</h2>
+        <div class="segmented">
+          <span>Tab Audio</span>
+          <label class="switch">
+            <input id="listen-mode" type="checkbox" />
+            <span class="slider"></span>
+          </label>
+          <span>Recording</span>
+        </div>
+
+        <div class="pill">
+          <button id="toggle-mic" class="pill-btn">
+            <span id="mic-icon">🎤</span> Mic Only
+          </button>
+        </div>
+
+        <div class="waveform" id="waveform">
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+          <div class="bar"></div><div class="bar"></div>
+        </div>
+
+        <div id="live-transcript" class="transcript">Waiting for audio...</div>
+      </section>
+
+      <!-- Screen Capture -->
+      <section class="card">
+        <h2>Screen Analysis</h2>
+        <button id="capture-screen" class="primary block">📷 Capture & Analyze</button>
+        <div id="screenshot-container">
+          <img id="screenshot-preview" class="preview hidden" />
+          <canvas id="annotation-canvas" class="preview hidden"></canvas>
+        </div>
+        <div class="row-actions">
+          <button id="annotate-image" class="ghost hidden">✏️ Annotate</button>
+          <button id="save-annotation" class="ghost hidden">💾 Save</button>
+          <button id="summarize-image" class="primary hidden">🧠 AI Analyze</button>
+        </div>
+      </section>
+
+      <!-- Q&A & Summaries -->
+      <section class="card">
+        <h2>Real-time Q&A</h2>
+        <input id="ask-input" placeholder="Ask about the meeting..." />
+        <div id="qqa-response" class="response hidden"></div>
+        <div class="row-actions">
+          <button id="summarize" class="ghost block">📝 Summarize Key Points</button>
+        </div>
+      </section>
+
+      <!-- Quick Settings Toggle -->
+      <section class="card">
+        <h2>Settings</h2>
+        <select id="provider-select">
+          <option value="google">Google Gemini</option>
+          <option value="openai">OpenAI</option>
+        </select>
+        <select id="model-select">
+          <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+          <option value="gpt-4o">GPT-4o</option>
+        </select>
+        <input id="vercel-url-input" placeholder="Backend URL (http://...)" />
+        <button id="save-settings" class="primary block">Update Config</button>
+      </section>
+    </div>
+
+    <footer class="status">
+      <span id="status-text">Status: Inactive</span>
+      <span id="live-dot" class="dot hidden"></span>
+      <div id="dashboard-link" style="cursor: pointer; text-decoration: underline;">Open Dashboard ↗</div>
+    </footer>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

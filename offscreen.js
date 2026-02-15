@@ -64,7 +64,7 @@ async function startCapture() {
         chrome.runtime.sendMessage({ type: 'error', message: 'STT send failed' });
       }
     };
-    mediaRecorder.start(2500); // 2.5s chunks
+    mediaRecorder.start(3000); // 3s chunks for better context
   } catch (e) {
     chrome.runtime.sendMessage({ type: 'error', message: 'Capture failed: ' + e.message });
   }
@@ -73,10 +73,10 @@ async function startCapture() {
 async function stopCapture() {
   try {
     mediaRecorder?.stop();
-  } catch {}
+  } catch { }
   try {
     mediaStream?.getTracks().forEach(t => t.stop());
-  } catch {}
+  } catch { }
 }
 
 function blobToDataURL(blob) {

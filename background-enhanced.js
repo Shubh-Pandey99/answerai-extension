@@ -8,6 +8,9 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'AI Assistant: Start/Stop Live Transcription',
     contexts: ['action']
   });
+  // Enable side panel on click
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
+    .catch((error) => console.error(error));
 });
 
 chrome.contextMenus.onClicked.addListener((info) => {

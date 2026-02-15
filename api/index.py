@@ -178,6 +178,52 @@ def transcribe():
         log.exception("transcribe failed")
         return jsonify({"error":"Transcription error"}), 500
 
+# -------- Cloud Persistence (MongoDB) --------
+import pymongo
+from datetime import datetime
+
+MONGO_URI = os.getenv("MONGODB_URI")
+db_client = None
+sessions_col = None
+
+if MONGO_URI:
+    try:
+        db_client = pymongo.MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        db = db_client.get_database("answerai")
+        sessions_col = db.get_collection("sessions")
+        log.info("Connected to MongoDB Atlas")
+    except Exception as e:
+        log.warning("Could not connect to MongoDB: %s", e)
+
+def get_session_data():
+    if sessions_col is not None:
+        try:
+            return list(sessions_col.find({}, {"_id": 0}).sort("timestamp", -1).limit(100))
+        except: return []
+    return []
+
+@app.get("/api/sessions")
+def get_sessions():
+    return jsonify(get_session_data()), 200
+
+@app.post("/api/sessions")
+def create_session():
+    try:
+        data = request.get_json(force=True) or {}
+        sid = data.get("id")
+        if not sid: return jsonify({"error":"No session ID"}), 400
+        
+        data["updated_at"] = datetime.utcnow().isoformat()
+        
+        if sessions_col is not None:
+            sessions_col.update_one({"id": sid}, {"$set": data}, upsert=True)
+            return jsonify({"status":"synced to cloud"}), 200
+        else:
+            return jsonify({"status":"local only (no DB config)"}), 200
+    except Exception as e:
+        log.exception("session save failed")
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     host = os.getenv("HOST","0.0.0.0")
     port = int(os.getenv("PORT",5055))
