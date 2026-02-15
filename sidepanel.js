@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
 
-    chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+    chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl) => {
       if (chrome.runtime.lastError) {
         const err = chrome.runtime.lastError.message;
         if (err.includes('permission')) {
