@@ -77,7 +77,7 @@ class GoogleProvider(BaseProvider):
         key = os.getenv("GOOGLE_API_KEY")
         if not key: raise ValueError("GOOGLE_API_KEY not configured")
         genai.configure(api_key=key)
-        self.model_name = os.getenv("GOOGLE_MODEL", "gemini-1.5-flash")
+        self.model_name = os.getenv("GOOGLE_MODEL", "gemini-pro")
         self.model = genai.GenerativeModel(self.model_name)
 
     def _pil_from_base64(self, data_uri:str):
