@@ -8,121 +8,60 @@ A comprehensive real-time AI assistant for meetings and browser use that provide
 
 ### 🎙️ Live Audio & Transcription
 - **Browser Tab Audio Capture**: Listen directly to audio playing in the active browser tab (Google Meet, Zoom, YouTube, etc.)
-- **Microphone Audio Capture**: Separate microphone recording for personal notes and questions
-- **Real-time Transcription**: Live, on-screen transcription using advanced speech recognition
-- **AI-Powered Analysis**: Automatic summaries and insights when recording stops
+- **Microphone Audio Capture**: Separate microphone recording for personal notes
+- **Real-time Transcription**: Live, on-screen transcription with interim results
+- **Waveform Visualization**: Real-time audio level display
 
-### 📸 Screen Capture & Analysis
-- **Screenshot Capture**: Capture images of the current browser tab with one click
-- **Image Annotation**: Draw and annotate screenshots with built-in tools
-- **AI Image Analysis**: OCR and multimodal AI analysis of screenshots, whiteboards, and diagrams
-- **Context Understanding**: AI interprets visual content and provides detailed explanations
+### 📸 Screen Analysis (Vision AI)
+- **Screenshot Capture**: Capture the active tab with one click
+- **Built-in Annotation**: Draw and mark up screenshots before analysis
+- **Multimodal AI**: Image analysis for OCR, diagrams, and presentations
 
 ### 💬 Real-time Q&A
-- **Contextual Questions**: Ask questions about the ongoing meeting or captured content
-- **Voice Input**: Use microphone for hands-free questioning
-- **Multi-Provider AI**: Support for GPT-5, GPT-4o, Gemini, and more
-- **Intelligent Responses**: Context-aware answers based on transcripts and images
+- **Side Panel Integration**: AI assistant stays open alongside your work
+- **Contextual Knowledge**: AI uses your meeting transcript for smart answers
+- **Multi-Provider Support**: Switch between **Google Gemini (Free)** and OpenAI
 
-### 🔔 Smart Notifications & Accessibility
-- **Desktop Notifications**: Get notified when recordings start/stop and AI responses are ready
-- **Text-to-Speech**: Hear AI responses and summaries spoken aloud
-- **On-Page Status**: Visual overlay showing extension status on any webpage
-- **Voice Commands**: Full voice control for hands-free operation
+### 📊 Meeting Dashboard
+- **Session History**: All meetings are automatically synced to the cloud
+- **Cloud Persistence**: Powered by **MongoDB Atlas** for persistent storage
+- **Analytics**: Track total meetings, word count, and interaction trends
 
 ## 🚀 Quick Start
 
-### Installation
-1. Clone this repository or download the ZIP file
-2. Open Chrome and navigate to `chrome://extensions/`
-3. Enable "Developer mode" in the top right
-4. Click "Load unpacked" and select the extension folder
-5. Pin the extension to your toolbar for easy access
+### Extension Installation
+1. Clone this repository
+2. Open Chrome and go to `chrome://extensions/`
+3. Enable **Developer mode**
+4. Click **Load unpacked** and select the project folder
+5. Pin the extension to your toolbar
 
-### Backend Setup
-1. Deploy the backend API to Vercel or run locally:
-   ```bash
-   cd /app/api
-   pip install -r ../requirements.txt
-   python index.py
-   ```
+### Cloud Backend Setup (Vercel + MongoDB)
+1. **Database**: Create a free cluster on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register) and get your `MONGODB_URI`.
+2. **AI Keys**: Get a free API key from [Google AI Studio (Gemini)](https://aistudio.google.com/).
+3. **Deploy**: Push this code to GitHub and connect it to [Vercel](https://vercel.com).
+4. **Environment Variables**: In Vercel, add:
+   - `GOOGLE_API_KEY`: Your Gemini key
+   - `MONGODB_URI`: Your MongoDB connection string
+   - `OPENAI_API_KEY`: (Optional) For Whisper and GPT-4o
 
-2. Set your backend URL in the extension settings
-3. Set your `OPENAI_API_KEY` in the backend environment.
+### Connect Extension to Backend
+1. Open the Extension **Side Panel**
+2. Go to **Settings** (bottom section)
+3. Enter your **Vercel URL** (e.g., `https://your-app.vercel.app`)
+4. Click **Update Config**
 
-### Usage
-1. **Start Recording**: Click the extension icon and toggle "Tab Audio" or "Microphone"
-2. **Capture Screens**: Use the "Capture Screen" button to take screenshots
-3. **Ask Questions**: Type or speak questions in the Q&A section
-4. **Get Summaries**: Click "Summarize key points" for AI-generated meeting summaries
+## 🔧 Technical Details
 
-## 🎯 Use Cases
+- **Architecture**: Manifest V3 Extension + Vercel Serverless (Python/Flask)
+- **Database**: MongoDB Atlas (Cloud persistence)
+- **View Layer**: Chrome Side Panel API & Modern Web Dashboard
+- **APIs**: `chrome.sidePanel`, `chrome.tabCapture`, `chrome.offscreen`
 
-### For Meetings
-- **Live Note-Taking**: Automatic transcription of meetings with key point extraction
-- **Action Items**: AI identifies and lists action items with owners and deadlines
-- **Meeting Summaries**: Instant summaries with decisions, topics, and next steps
-- **Visual Analysis**: Analyze shared screens, whiteboards, and presentations
+---
 
-### For Learning
-- **Lecture Notes**: Transcribe educational content from videos or live sessions
-- **Code Analysis**: Capture and analyze code snippets or technical diagrams
-- **Research Assistance**: Ask questions about content you're viewing or hearing
+**Made with ❤️ for better digital meetings and productivity**
 
-### For Productivity
-- **Content Creation**: Generate summaries and insights from any audio/visual content
-- **Documentation**: Create structured notes from unstructured meetings
-- **Knowledge Management**: Build a searchable database of meeting insights
-
-## 🔧 Configuration
-
-### AI Providers
-The extension supports multiple AI providers:
-
-- **OpenAI (Default)**: GPT-4o with your own API key.
-- **Google**: Use your Google AI API key for Gemini models
-- **OpenRouter**: Access to various models through OpenRouter
-- **Mock**: For testing without API costs
-
-### Settings Options
-- **Provider Selection**: Choose your preferred AI provider
-- **Model Selection**: Pick from GPT-5, GPT-4o, GPT-4o-mini
-- **Notifications**: Enable/disable desktop notifications
-- **Text-to-Speech**: Toggle voice output for AI responses
-- **Backend URL**: Configure your API endpoint
-
-## 🛠️ Technical Details
-
-### Architecture
-- **Frontend**: Chrome Extension with Manifest V3
-- **Backend**: Flask API with multi-provider AI support
-- **Audio Processing**: WebAudio API with custom worklets for noise reduction
-- **Speech Recognition**: Built-in browser speech-to-text capabilities
-- **Image Processing**: Canvas API for annotations and OCR analysis
-
-### APIs Used
-- `chrome.tabCapture` - Browser tab audio capture
-- `chrome.tabs.captureVisibleTab` - Screenshot functionality
-- `chrome.offscreen` - Background audio processing
-- `chrome.notifications` - Desktop notifications
-- `SpeechRecognition` - Speech-to-text conversion
-- `SpeechSynthesis` - Text-to-speech output
-
-### File Structure
-```
-├── manifest.json              # Extension configuration
-├── popup-enhanced.html        # Main popup interface
-├── popup-enhanced.js          # Popup logic and controls
-├── background-enhanced.js     # Background service worker
-├── content-script.js          # On-page status and notifications
-├── offscreen.html            # Audio processing document
-├── offscreen.js              # Audio capture and transcription
-├── audio-processor.js        # Audio enhancement worklet
-├── popup.css                 # Styles and theming
-├── api/
-│   └── index.py              # Flask backend API
-└── requirements.txt          # Python dependencies
-```
 
 ## 🔐 Privacy & Security
 
