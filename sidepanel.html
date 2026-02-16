@@ -10,116 +10,122 @@
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
-<body class="mode-empty">
+<body class="mode-ready">
   <div class="app-container">
-    <!-- 1. HEADER (48px) -->
-    <header class="main-header">
-      <div class="header-left">
-        <button id="main-record-toggle" class="record-btn-minimal">
-          <span class="record-dot"></span>
-          <span id="record-text">Record</span>
+    <!-- Header -->
+    <header class="saas-header">
+      <div class="status-group">
+        <span class="status-dot"></span>
+        <h2 id="header-title">Ready</h2>
+      </div>
+
+      <!-- Mode Toggle -->
+      <div class="mode-toggle">
+        <button id="toggle-transcript" class="toggle-item active" title="View Transcript">
+          <i data-lucide="file-text"></i>
         </button>
-      </div>
-      <div class="header-center">
-        <h1 class="app-title">AI Assistant</h1>
-      </div>
-      <div class="header-right">
-        <button id="capture-screen" class="icon-tool-btn" title="Capture Screen">
+        <button id="toggle-capture" class="toggle-item" title="View Capture">
           <i data-lucide="camera"></i>
-          <span class="fallback-icon">📸</span>
         </button>
+      </div>
+
+      <div class="header-actions">
+        <button class="ghost-btn" id="close-panel"><i data-lucide="chevron-left"></i></button>
       </div>
     </header>
 
-    <!-- 2. PRIMARY WORK AREA (Dynamic) -->
-    <main class="work-area">
-      <!-- Empty State -->
-      <div id="empty-state" class="empty-view">
-        <div class="hero-icon">🤖</div>
-        <h2>Ready to assist</h2>
-        <p>Start recording audio or capture a screen to begin.</p>
-        <button id="empty-capture-btn" class="action-pill primary" style="margin-top: 20px;">
-          <i data-lucide="camera"></i> <span>Capture Screen</span>
-        </button>
-      </div>
+    <main class="content-area">
+      <!-- Context Section -->
+      <section class="context-card">
+        <div class="card-label">Context View</div>
 
-      <!-- Transcript View (Mode: Recording) -->
-      <div id="transcript-view" class="context-view hidden">
-        <div class="view-header">
-          <h3>Live Transcript</h3>
-          <div class="header-actions">
-            <button id="copy-transcript" class="ghost-icon-btn"><i data-lucide="copy"></i></button>
-            <button id="clear-transcript" class="ghost-icon-btn"><i data-lucide="trash-2"></i></button>
+        <!-- Mode: Ready -->
+        <div id="ready-view" class="view-content">
+          <div class="hero-icon">🤖</div>
+          <h3>AI Assistant</h3>
+          <p>Ready to capture and process your meetings in real-time.</p>
+          <button id="start-recording-btn" class="primary-action-btn">Start Recording</button>
+        </div>
+
+        <!-- Mode: Recording -->
+        <div id="recording-view" class="view-content hidden">
+          <div id="live-transcript" class="transcript-box" contenteditable="true" placeholder="Listening to audio...">
           </div>
         </div>
-        <div id="live-transcript" class="transcript-content" contenteditable="true" placeholder="Waiting for audio...">
-        </div>
-      </div>
 
-      <!-- Capture View (Mode: Captured) -->
-      <div id="capture-view" class="context-view hidden">
-        <div class="view-header">
-          <h3>Captured Screen</h3>
-          <button id="delete-capture" class="ghost-icon-btn"><i data-lucide="x"></i></button>
+        <!-- Mode: Captured -->
+        <div id="captured-view" class="view-content hidden">
+          <div class="image-frame">
+            <img id="active-image" src="" alt="Captured">
+            <div class="carousel-dots">
+              <span class="dot active"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
+          </div>
         </div>
-        <div class="image-container">
-          <img id="active-capture-img" class="large-preview" alt="Captured screen">
+
+        <!-- Mode: Result -->
+        <div id="result-view" class="view-content hidden">
+          <div class="result-header">Result Text</div>
+          <div id="ai-response-text" class="ai-text"></div>
         </div>
-      </div>
+      </section>
+
+      <!-- Primary Actions Bar (Dynamic Pills) -->
+      <section id="primary-toolbar" class="actions-section">
+        <div id="recording-tools" class="pill-group hidden">
+          <button id="summarize-btn" class="pill-btn">Summarize</button>
+          <button id="tasks-btn" class="pill-btn">Extract Tasks</button>
+          <button id="improve-btn" class="pill-btn">Improve</button>
+        </div>
+        <div id="captured-tools" class="pill-group hidden">
+          <button id="analyze-btn" class="pill-btn dark">Analyze</button>
+          <button id="ocr-btn" class="pill-btn">Extract Text</button>
+          <button id="explain-btn" class="pill-btn">Explain</button>
+        </div>
+      </section>
+
+      <!-- Secondary Quick Actions / Results Area -->
+      <section class="footer-sections">
+        <div class="accordion-item">
+          <div class="accordion-header">
+            <span>Quick Actions</span>
+          </div>
+          <div class="pill-group mini">
+            <button id="capture-shortcut" class="mini-pill">Capture</button>
+            <button id="ocr-shortcut" class="mini-pill">OCR</button>
+            <button id="explain-shortcut" class="mini-pill">Explain</button>
+          </div>
+        </div>
+
+        <div id="ai-result-accordion" class="accordion-item">
+          <div class="accordion-header">
+            <span>AI Result</span>
+            <i data-lucide="chevron-down"></i>
+          </div>
+        </div>
+      </section>
     </main>
 
-    <!-- 3. CONTEXTUAL TOOLBAR -->
-    <div id="contextual-toolbar" class="toolbar hidden">
-      <!-- Transcript Actions -->
-      <div id="transcript-tools" class="tool-group hidden">
-        <button id="summarize-transcript" class="action-pill"><i data-lucide="file-text"></i> Summarize</button>
-        <button id="extract-tasks" class="action-pill"><i data-lucide="list-checks"></i> Tasks</button>
-      </div>
-      <!-- Image Actions -->
-      <div id="image-tools" class="tool-group hidden">
-        <button id="analyze-image" class="action-pill primary"><i data-lucide="sparkles"></i> Analyze</button>
-        <button id="ocr-image" class="action-pill"><i data-lucide="type"></i> Extract Text</button>
-      </div>
-    </div>
-
-    <!-- 4. AI OUTPUT (Collapsible Drawer) -->
-    <div id="ai-drawer" class="ai-drawer collapsed">
-      <div id="ai-drawer-handle" class="drawer-header">
-        <span>AI Insights</span>
-        <i data-lucide="chevron-up" class="drawer-icon"></i>
-      </div>
-      <div class="drawer-content">
-        <div id="qqa-response" class="ai-text-output"></div>
-      </div>
-    </div>
-
-    <!-- 5. BOTTOM INPUT -->
-    <footer class="input-footer">
-      <div class="input-wrapper">
-        <input type="text" id="ask-input" placeholder="Ask anything..." autocomplete="off">
-        <button id="send-ask" class="send-button">
-          <i data-lucide="arrow-up"></i>
-        </button>
+    <!-- Bottom Ask Bar -->
+    <footer class="saas-footer">
+      <div class="ask-container">
+        <input type="text" id="ask-input" placeholder="Ask AI..." autocomplete="off">
+        <button id="send-btn" class="icon-send-btn"><i data-lucide="send"></i></button>
+        <i data-lucide="chevron-down" class="expand-icon"></i>
       </div>
 
-      <!-- Settings Details -->
-      <details class="minimal-settings">
+      <!-- Hidden Settings for UI Cleanliness -->
+      <details class="ui-settings">
         <summary><i data-lucide="settings"></i></summary>
-        <div class="settings-popover">
-          <div class="setting-row">
-            <label>Model</label>
-            <select id="model-select">
-              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-              <option value="gpt-4o">GPT-4o</option>
-            </select>
-          </div>
-          <div class="setting-row">
-            <label>API</label>
-            <input type="text" id="vercel-url-input" placeholder="Vercel URL">
-          </div>
-          <button id="save-settings" class="mini-save">Save</button>
-          <div id="dashboard-link" class="dash-btn">History ↗</div>
+        <div class="settings-panel">
+          <select id="model-select">
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+          </select>
+          <input type="text" id="vercel-url-input" placeholder="API URL">
+          <button id="save-settings">Save</button>
         </div>
       </details>
     </footer>

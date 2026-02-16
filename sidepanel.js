@@ -1,310 +1,168 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // --- UI References ---
-  const body = document.body;
-  const mainRecordBtn = document.getElementById('main-record-toggle');
-  const recordText = document.getElementById('record-text');
+  // Elements
+  const headerTitle = document.getElementById('header-title');
+  const appContainer = document.querySelector('.app-container');
+  const toggleTranscript = document.getElementById('toggle-transcript');
+  const toggleCapture = document.getElementById('toggle-capture');
 
-  const emptyView = document.getElementById('empty-state');
-  const transcriptView = document.getElementById('transcript-view');
-  const captureView = document.getElementById('capture-view');
+  const views = {
+    ready: document.getElementById('ready-view'),
+    recording: document.getElementById('recording-view'),
+    captured: document.getElementById('captured-view'),
+    result: document.getElementById('result-view')
+  };
+
+  const toolbars = {
+    recording: document.getElementById('recording-tools'),
+    captured: document.getElementById('captured-tools')
+  };
+
   const transcriptEl = document.getElementById('live-transcript');
-  const activeCaptureImg = document.getElementById('active-capture-img');
+  const activeImage = document.getElementById('active-image');
+  const aiResponseText = document.getElementById('ai-response-text');
 
-  const toolbar = document.getElementById('contextual-toolbar');
-  const transcriptTools = document.getElementById('transcript-tools');
-  const imageTools = document.getElementById('image-tools');
-
-  const captureBtn = document.getElementById('capture-screen');
-  const emptyCaptureBtn = document.getElementById('empty-capture-btn');
-  const deleteCaptureBtn = document.getElementById('delete-capture');
-  const summarizeTranscriptBtn = document.getElementById('summarize-transcript');
-  const extractTasksBtn = document.getElementById('extract-tasks');
-  const analyzeImageBtn = document.getElementById('analyze-image');
-  const ocrImageBtn = document.getElementById('ocr-image');
-
-  const aiDrawer = document.getElementById('ai-drawer');
-  const aiDrawerHandle = document.getElementById('ai-drawer-handle');
-  const qqaResponse = document.getElementById('qqa-response');
+  const startBtn = document.getElementById('start-recording-btn');
+  const summarizeBtn = document.getElementById('summarize-btn');
+  const tasksBtn = document.getElementById('tasks-btn');
+  const analyzeBtn = document.getElementById('analyze-btn');
+  const ocrBtn = document.getElementById('ocr-btn');
+  const captureShortcut = document.getElementById('capture-shortcut');
 
   const askInput = document.getElementById('ask-input');
-  const sendAskBtn = document.getElementById('send-ask');
-  const copyTranscriptBtn = document.getElementById('copy-transcript');
-  const clearTranscriptBtn = document.getElementById('clear-transcript');
+  const sendBtn = document.getElementById('send-btn');
 
-  const modelSelect = document.getElementById('model-select');
-  const urlInput = document.getElementById('vercel-url-input');
-  const saveSettingsBtn = document.getElementById('save-settings');
-  const dashboardLink = document.getElementById('dashboard-link');
-
-  // --- State ---
+  // State
   let isRecording = false;
-  let activeCapture = null;
   let aggregatedTranscript = '';
-  let sessionId = crypto.randomUUID();
+  let activeCaptureData = null;
 
-  // --- Initial Load ---
-  chrome.storage.local.get(['model', 'vercelUrl'], (s) => {
-    if (s.model) modelSelect.value = s.model;
-    if (s.vercelUrl) urlInput.value = s.vercelUrl;
-
-    chrome.runtime.sendMessage({ type: 'get-state' }, (res) => {
-      if (res && res.isRecording) {
-        updateUIStarted();
-        setMode('recording');
-      }
-    });
-  });
-
-  // --- UI Logic: Modes ---
   function setMode(mode) {
-    // Possible: recording, captured, empty
-    [emptyView, transcriptView, captureView, toolbar, transcriptTools, imageTools].forEach(el => el.classList.add('hidden'));
+    // Reset
+    Object.values(views).forEach(v => v.classList.add('hidden'));
+    Object.values(toolbars).forEach(t => t.classList.add('hidden'));
+    appContainer.classList.remove('recording');
 
-    if (mode === 'recording') {
-      transcriptView.classList.remove('hidden');
-      toolbar.classList.remove('hidden');
-      transcriptTools.classList.remove('hidden');
+    // Sync Toggle
+    toggleTranscript.classList.remove('active');
+    toggleCapture.classList.remove('active');
+
+    if (mode === 'ready') {
+      views.ready.classList.remove('hidden');
+      headerTitle.textContent = 'Ready';
+      toggleTranscript.classList.add('active');
+    } else if (mode === 'recording') {
+      views.recording.classList.remove('hidden');
+      toolbars.recording.classList.remove('hidden');
+      headerTitle.textContent = 'Recording';
+      appContainer.classList.add('recording');
+      toggleTranscript.classList.add('active');
     } else if (mode === 'captured') {
-      captureView.classList.remove('hidden');
-      toolbar.classList.remove('hidden');
-      imageTools.classList.remove('hidden');
+      views.captured.classList.remove('hidden');
+      toolbars.captured.classList.remove('hidden');
+      headerTitle.textContent = 'Captured Screen';
+      toggleCapture.classList.add('active');
+    } else if (mode === 'result') {
+      views.result.classList.remove('hidden');
+      headerTitle.textContent = 'AI Insight';
+    }
+  }
+
+  toggleTranscript.onclick = () => {
+    if (isRecording) setMode('recording');
+    else setMode('ready');
+  };
+
+  toggleCapture.onclick = () => {
+    if (activeCaptureData) setMode('captured');
+    else captureScreen();
+  };
+
+  // --- Actions ---
+
+  startBtn.onclick = () => {
+    if (!isRecording) {
+      startRecording();
     } else {
-      emptyView.classList.remove('hidden');
+      stopRecording();
     }
-  }
-
-  // --- AI Drawer Controls ---
-  aiDrawerHandle.onclick = () => {
-    aiDrawer.classList.toggle('collapsed');
-    aiDrawer.classList.toggle('expanded');
   };
 
-  function updateAIResult(html, expand = true) {
-    aiDrawer.classList.remove('hidden');
-    qqaResponse.innerHTML = html;
-    if (expand) {
-      aiDrawer.classList.remove('collapsed');
-      aiDrawer.classList.add('expanded');
-    }
-  }
-
-  function showAILoading(text) {
-    updateAIResult(`<div class="loading-state">${text}...</div>`, true);
-  }
-
-  // --- Recording Control ---
-  mainRecordBtn.onclick = () => {
-    if (!isRecording) startSession();
-    else stopSession();
-  };
-
-  function startSession() {
-    sessionId = crypto.randomUUID();
-    aggregatedTranscript = '';
-    transcriptEl.innerHTML = '';
-    chrome.runtime.sendMessage({ type: 'toggle-recording' }, (response) => {
-      if (chrome.runtime.lastError) return toast('Error: ' + chrome.runtime.lastError.message);
-      updateUIStarted();
-      setMode('recording');
-    });
-  }
-
-  function stopSession() {
-    chrome.runtime.sendMessage({ type: 'toggle-recording' });
-    updateUIStopped();
-    saveSessionToDashboard();
-  }
-
-  function updateUIStarted() {
+  function startRecording() {
     isRecording = true;
-    mainRecordBtn.classList.add('recording');
-    recordText.textContent = 'Stop';
+    aggregatedTranscript = '';
+    transcriptEl.textContent = '';
+    setMode('recording');
+    startBtn.textContent = 'Stop Recording';
+    chrome.runtime.sendMessage({ type: 'toggle-recording' });
   }
 
-  function updateUIStopped() {
+  function stopRecording() {
     isRecording = false;
-    mainRecordBtn.classList.remove('recording');
-    recordText.textContent = 'Record';
+    startBtn.textContent = 'Start Recording';
+    chrome.runtime.sendMessage({ type: 'toggle-recording' });
+    // Keep transcript visible for a moment or jump to summarization? 
+    // Staying in recording mode (viewing transcript) is fine until user clicks something else.
   }
 
-  // --- Capture Flow ---
-  captureBtn.onclick = async () => {
+  async function captureScreen() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
-
-    chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 100 }, (dataUrl) => {
-      if (chrome.runtime.lastError) return toast('Capture Error: ' + chrome.runtime.lastError.message);
-
-      activeCapture = dataUrl;
-      activeCaptureImg.src = dataUrl;
+    chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 90 }, (dataUrl) => {
+      activeCaptureData = dataUrl;
+      activeImage.src = dataUrl;
       setMode('captured');
-
-      // Flash effect
-      body.style.opacity = '0.5';
-      setTimeout(() => body.style.opacity = '1', 100);
     });
-  };
+  }
 
-  emptyCaptureBtn.onclick = () => captureBtn.click();
+  captureShortcut.onclick = captureScreen;
 
-  deleteCaptureBtn.onclick = () => {
-    activeCapture = null;
-    setMode('empty');
-  };
-
-  // --- AI Actions ---
-  summarizeTranscriptBtn.onclick = async () => {
-    if (!aggregatedTranscript.trim()) return toast('Nothing to summarize');
-    showAILoading('Synthesizing transcript');
+  async function runAIAction(prompt, extra = {}) {
+    setMode('result');
+    aiResponseText.textContent = 'Thinking...';
     try {
-      const data = await apiCall({
-        transcript: `Highlight the key points and decisions from this transcript:\n\n${aggregatedTranscript}`
+      const payload = { transcript: prompt, ...extra };
+      const { provider, vercelUrl, model } = await new Promise(r => chrome.storage.local.get(['provider', 'vercelUrl', 'model'], r));
+      const url = vercelUrl || 'https://spatial-expanse.vercel.app';
+
+      const res = await fetch(`${url}/api/answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: provider || 'google', model, ...payload })
       });
-      updateAIResult(formatAIResponse(data.answer));
+      const data = await res.json();
+      aiResponseText.innerHTML = (data.answer || 'No response').replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
     } catch (e) {
-      updateAIResult(`<span style="color:var(--danger)">Error: ${e.message}</span>`);
+      aiResponseText.textContent = 'Error: ' + e.message;
     }
-  };
+  }
 
-  extractTasksBtn.onclick = async () => {
-    if (!aggregatedTranscript.trim()) return toast('Nothing to extract');
-    showAILoading('Extracting action items');
-    try {
-      const data = await apiCall({
-        transcript: `List only the action items and owners from this meeting:\n\n${aggregatedTranscript}`
-      });
-      updateAIResult(formatAIResponse(data.answer));
-    } catch (e) {
-      updateAIResult(`<span style="color:var(--danger)">Error: ${e.message}</span>`);
-    }
-  };
+  summarizeBtn.onclick = () => runAIAction(`Summarize this transcript:\n${aggregatedTranscript}`);
+  tasksBtn.onclick = () => runAIAction(`Extract action items from:\n${aggregatedTranscript}`);
+  analyzeBtn.onclick = () => runAIAction(`Analyze this screen capture:`, { imageBase64: activeCaptureData });
+  ocrBtn.onclick = () => runAIAction(`Extract all text from this image:`, { imageBase64: activeCaptureData, transcript: 'OCR' });
 
-  analyzeImageBtn.onclick = async () => {
-    if (!activeCapture) return;
-    showAILoading('Analyzing screen');
-    try {
-      const data = await apiCall({ imageBase64: activeCapture });
-      updateAIResult(formatAIResponse(data.answer));
-    } catch (e) {
-      updateAIResult(`<span style="color:var(--danger)">Error: ${e.message}</span>`);
-    }
-  };
-
-  ocrImageBtn.onclick = async () => {
-    if (!activeCapture) return;
-    showAILoading('Extracting text from image');
-    try {
-      const data = await apiCall({
-        imageBase64: activeCapture,
-        transcript: "Extract all visible text from this image exactly as it appears."
-      });
-      updateAIResult(formatAIResponse(data.answer));
-    } catch (e) {
-      updateAIResult(`<span style="color:var(--danger)">Error: ${e.message}</span>`);
-    }
-  };
-
-  const askAI = async () => {
+  sendBtn.onclick = () => {
     const q = askInput.value.trim();
     if (!q) return;
     askInput.value = '';
-
-    showAILoading('Thinking');
-    try {
-      const payload = { transcript: q };
-      if (activeCapture) payload.imageBase64 = activeCapture;
-      // Add context if available
-      if (aggregatedTranscript) payload.transcript = `Context:\n${aggregatedTranscript}\n\nUser Question: ${q}`;
-
-      const data = await apiCall(payload);
-      updateAIResult(formatAIResponse(data.answer));
-    } catch (e) {
-      updateAIResult(`<span style="color:var(--danger)">Error: ${e.message}</span>`);
-    }
+    const extra = activeCaptureData ? { imageBase64: activeCaptureData } : {};
+    runAIAction(q, extra);
   };
 
-  sendAskBtn.onclick = askAI;
-  askInput.onkeypress = (e) => e.key === 'Enter' && askAI();
-
-  // --- Messages listener ---
+  // Messaging from Background
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === 'recording-started') { updateUIStarted(); setMode('recording'); }
-    if (msg.type === 'recording-stopped') updateUIStopped();
-    if (msg.type === 'trigger-capture') captureBtn.click();
-
     if (msg.type === 'transcript-chunk') {
-      const text = msg.text || '';
-      aggregatedTranscript += text + ' ';
-      transcriptEl.innerHTML = aggregatedTranscript.trim();
+      aggregatedTranscript += msg.text + ' ';
+      transcriptEl.textContent = aggregatedTranscript;
       transcriptEl.scrollTop = transcriptEl.scrollHeight;
-      if (isRecording && transcriptView.classList.contains('hidden')) setMode('recording');
+      if (headerTitle.textContent !== 'Recording') setMode('recording');
     }
   });
 
-  // --- Helpers ---
-  async function apiCall(payload) {
-    const { provider, vercelUrl, model } = await new Promise(r => chrome.storage.local.get(['provider', 'vercelUrl', 'model'], r));
-    const url = vercelUrl || 'https://spatial-expanse.vercel.app';
-    const res = await fetch(`${url}/api/answer`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider: provider || 'google', model, ...payload })
-    });
-    if (!res.ok) throw new Error(`Server ${res.status}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    return data;
-  }
-
-  function formatAIResponse(t) {
-    if (!t) return 'No response.';
-    return t.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
-  }
-
-  function toast(msg) {
-    const t = document.createElement('div');
-    t.style = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#ef4444;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5);';
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
-  }
-
-  // --- Utilites ---
-  copyTranscriptBtn.onclick = () => {
-    navigator.clipboard.writeText(aggregatedTranscript);
-    toast('Copied to clipboard');
+  // Settings
+  const modelSelect = document.getElementById('model-select');
+  const urlInput = document.getElementById('vercel-url-input');
+  document.getElementById('save-settings').onclick = () => {
+    chrome.storage.local.set({ model: modelSelect.value, vercelUrl: urlInput.value });
   };
-  clearTranscriptBtn.onclick = () => {
-    aggregatedTranscript = '';
-    transcriptEl.innerHTML = '';
-  };
-  saveSettingsBtn.onclick = () => {
-    chrome.storage.local.set({
-      model: modelSelect.value,
-      vercelUrl: urlInput.value
-    }, () => toast('Settings Saved'));
-  };
-  dashboardLink.onclick = () => {
-    chrome.storage.local.get(['vercelUrl'], s => {
-      chrome.tabs.create({ url: s.vercelUrl || 'https://spatial-expanse.vercel.app' });
-    });
-  };
-
-  function saveSessionToDashboard() {
-    chrome.storage.local.get(['vercelUrl'], async (s) => {
-      const url = s.vercelUrl || 'https://spatial-expanse.vercel.app';
-      try {
-        await fetch(`${url}/api/sessions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: sessionId,
-            timestamp: new Date().toISOString(),
-            transcript: aggregatedTranscript,
-            title: 'Meeting ' + new Date().toLocaleTimeString()
-          })
-        });
-      } catch (e) { console.error('Sync failed', e); }
-    });
-  }
 });
