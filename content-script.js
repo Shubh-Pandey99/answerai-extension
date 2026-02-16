@@ -5,7 +5,7 @@ let isRecording = false;
 // Create status overlay
 function createStatusOverlay() {
   if (statusOverlay) return;
-  
+
   statusOverlay = document.createElement('div');
   statusOverlay.id = 'ai-meeting-status-overlay';
   statusOverlay.innerHTML = `
@@ -14,7 +14,7 @@ function createStatusOverlay() {
       <div id="ai-status-text">AI Assistant Ready</div>
     </div>
   `;
-  
+
   // Add styles
   const styles = `
     #ai-meeting-status-overlay {
@@ -63,13 +63,13 @@ function createStatusOverlay() {
       font-size: 16px;
     }
   `;
-  
+
   const styleSheet = document.createElement('style');
   styleSheet.textContent = styles;
   document.head.appendChild(styleSheet);
-  
+
   document.body.appendChild(statusOverlay);
-  
+
   // Show overlay
   setTimeout(() => statusOverlay.classList.add('visible'), 100);
 }
@@ -77,12 +77,12 @@ function createStatusOverlay() {
 // Update status overlay
 function updateStatusOverlay(status, recording = false) {
   if (!statusOverlay) createStatusOverlay();
-  
+
   const statusText = document.getElementById('ai-status-text');
   const statusIcon = document.getElementById('ai-status-icon');
-  
+
   statusText.textContent = status;
-  
+
   if (recording) {
     statusOverlay.classList.add('recording');
     statusIcon.textContent = '🎙️';
@@ -90,7 +90,7 @@ function updateStatusOverlay(status, recording = false) {
     statusOverlay.classList.remove('recording');
     statusIcon.textContent = '🤖';
   }
-  
+
   isRecording = recording;
 }
 
@@ -122,32 +122,32 @@ function showDesktopNotification(title, body, icon = null) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.type) {
     case 'recording-started':
-      updateStatusOverlay('Recording Active', true);
+      // updateStatusOverlay('Recording Active', true);
       showDesktopNotification('AI Meeting Assistant', 'Recording started');
       break;
-      
+
     case 'recording-stopped':
-      updateStatusOverlay('AI Assistant Ready', false);
+      // updateStatusOverlay('AI Assistant Ready', false);
       showDesktopNotification('AI Meeting Assistant', 'Recording stopped');
       break;
-      
+
     case 'transcript-update':
-      updateStatusOverlay('Transcribing...', true);
+      // updateStatusOverlay('Transcribing...', true);
       break;
-      
+
     case 'ai-response-ready':
       showDesktopNotification('AI Meeting Assistant', 'AI response ready');
       break;
-      
+
     case 'show-status':
-      createStatusOverlay();
+      // createStatusOverlay();
       break;
-      
+
     case 'hide-status':
-      hideStatusOverlay();
+      // hideStatusOverlay();
       break;
   }
 });
 
 // Initialize when content script loads
-createStatusOverlay();
+// createStatusOverlay(); // Disabled as per user request

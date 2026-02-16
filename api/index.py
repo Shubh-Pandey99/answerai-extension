@@ -77,7 +77,7 @@ class GoogleProvider(BaseProvider):
         key = os.getenv("GOOGLE_API_KEY")
         if not key: raise ValueError("GOOGLE_API_KEY not configured")
         genai.configure(api_key=key, transport="rest")
-        self.model_name = os.getenv("GOOGLE_MODEL", "gemini-1.5-flash")
+        self.model_name = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash")
         log.info("Initializing GoogleProvider with model: %s", self.model_name)
         self.model = genai.GenerativeModel(self.model_name)
 
@@ -110,8 +110,15 @@ class GoogleProvider(BaseProvider):
         except Exception as e:
             log.warning("Primary Gemini call failed: %s", e)
             try:
-                log.info("Trying fallback to gemini-1.5-pro")
-                fallback = genai.GenerativeModel("gemini-1.5-pro")
+                # Attempt to log available models to help debugging
+                available = [m.name for m in genai.list_models()]
+                log.info("Available models: %s", available)
+                
+                # Try a very safe fallback if available
+                fallback_name = "models/gemini-1.5-flash" if "models/gemini-1.5-flash" in available else available[0]
+                log.info("Trying fallback to %s", fallback_name)
+                
+                fallback = genai.GenerativeModel(fallback_name)
                 resp = fallback.generate_content(parts)
                 return {"answer": resp.text}
             except Exception as e2:

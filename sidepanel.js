@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial Load
   chrome.storage.local.get(['provider', 'model', 'vercelUrl', 'tts', 'isRecording'], (s) => {
     providerSelect.value = s.provider || 'google';
-    modelSelect.value = s.model || (s.provider === 'openai' ? 'gpt-4o' : 'gemini-1.5-flash');
+    modelSelect.value = s.model || (s.provider === 'openai' ? 'gpt-4o' : 'gemini-2.0-flash');
     urlInput.value = s.vercelUrl || 'https://spatial-expanse.vercel.app';
     ttsEnabled = s.tts !== false;
 
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
 
-    chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl) => {
+    chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 80 }, (dataUrl) => {
       if (chrome.runtime.lastError) {
         const err = chrome.runtime.lastError.message;
         if (err.includes('permission') || err.includes('invoked')) {
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   saveEditsBtn.addEventListener('click', () => {
-    screenshotDataUrl = annotationCanvas.toDataURL('image/png');
+    screenshotDataUrl = annotationCanvas.toDataURL('image/jpeg', 0.8);
     annotationCanvas.classList.add('hidden');
     screenshotPreview.src = screenshotDataUrl;
     screenshotPreview.classList.remove('hidden');
