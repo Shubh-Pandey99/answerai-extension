@@ -1,29 +1,35 @@
 document.addEventListener('DOMContentLoaded', () => {
   // --- UI References ---
+  const body = document.body;
   const mainRecordBtn = document.getElementById('main-record-toggle');
   const recordText = document.getElementById('record-text');
-  const liveIndicator = document.getElementById('live-indicator');
 
-  const transcriptBox = document.getElementById('live-transcript');
-  const copyTranscriptBtn = document.getElementById('copy-transcript');
-  const clearTranscriptBtn = document.getElementById('clear-transcript');
-  const regenerateSummaryBtn = document.getElementById('regenerate-summary');
+  const emptyView = document.getElementById('empty-state');
+  const transcriptView = document.getElementById('transcript-view');
+  const captureView = document.getElementById('capture-view');
+  const transcriptEl = document.getElementById('live-transcript');
+  const activeCaptureImg = document.getElementById('active-capture-img');
+
+  const toolbar = document.getElementById('contextual-toolbar');
+  const transcriptTools = document.getElementById('transcript-tools');
+  const imageTools = document.getElementById('image-tools');
 
   const captureBtn = document.getElementById('capture-screen');
-  const summarizeBtn = document.getElementById('summarize-transcript');
-  const analyzeVisionBtn = document.getElementById('analyze-vision');
+  const emptyCaptureBtn = document.getElementById('empty-capture-btn');
+  const deleteCaptureBtn = document.getElementById('delete-capture');
+  const summarizeTranscriptBtn = document.getElementById('summarize-transcript');
+  const extractTasksBtn = document.getElementById('extract-tasks');
+  const analyzeImageBtn = document.getElementById('analyze-image');
+  const ocrImageBtn = document.getElementById('ocr-image');
 
-  const capturePanel = document.getElementById('capture-panel');
-  const captureGrid = document.getElementById('capture-grid');
-  const captureCountBadge = document.getElementById('capture-count');
-  const captureItemTemplate = document.getElementById('capture-item-template');
-
-  const aiSection = document.getElementById('ai-response-section');
+  const aiDrawer = document.getElementById('ai-drawer');
+  const aiDrawerHandle = document.getElementById('ai-drawer-handle');
   const qqaResponse = document.getElementById('qqa-response');
-  const clearAiBtn = document.getElementById('clear-ai-chat');
 
   const askInput = document.getElementById('ask-input');
   const sendAskBtn = document.getElementById('send-ask');
+  const copyTranscriptBtn = document.getElementById('copy-transcript');
+  const clearTranscriptBtn = document.getElementById('clear-transcript');
 
   const modelSelect = document.getElementById('model-select');
   const urlInput = document.getElementById('vercel-url-input');
@@ -32,248 +38,210 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- State ---
   let isRecording = false;
-  let captures = []; // Array of capture data URLs
+  let activeCapture = null;
   let aggregatedTranscript = '';
   let sessionId = crypto.randomUUID();
 
   // --- Initial Load ---
-  chrome.storage.local.get(['provider', 'model', 'vercelUrl', 'isRecording'], (s) => {
+  chrome.storage.local.get(['model', 'vercelUrl'], (s) => {
     if (s.model) modelSelect.value = s.model;
     if (s.vercelUrl) urlInput.value = s.vercelUrl;
 
-    // Resume state if background is already recording
     chrome.runtime.sendMessage({ type: 'get-state' }, (res) => {
       if (res && res.isRecording) {
         updateUIStarted();
+        setMode('recording');
       }
     });
   });
 
-  // --- Rendering Functions ---
-  function renderCaptures() {
-    captureGrid.innerHTML = '';
-    captureCountBadge.textContent = captures.length;
+  // --- UI Logic: Modes ---
+  function setMode(mode) {
+    // Possible: recording, captured, empty
+    [emptyView, transcriptView, captureView, toolbar, transcriptTools, imageTools].forEach(el => el.classList.add('hidden'));
 
-    if (captures.length === 0) {
-      capturePanel.classList.add('hidden');
-      analyzeVisionBtn.classList.add('hidden');
-      return;
-    }
-
-    capturePanel.classList.remove('hidden');
-    analyzeVisionBtn.classList.remove('hidden');
-
-    captures.forEach((dataUrl, index) => {
-      const clone = captureItemTemplate.content.cloneNode(true);
-      const img = clone.querySelector('.capture-img');
-      const deleteBtn = clone.querySelector('.delete-capture');
-      const expandBtn = clone.querySelector('.expand-capture');
-
-      img.src = dataUrl;
-
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        captures.splice(index, 1);
-        renderCaptures();
-      });
-
-      expandBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const win = window.open();
-        win.document.write(`<img src="${dataUrl}" style="width:100%">`);
-      });
-
-      captureGrid.appendChild(clone);
-    });
-
-    // Refresh Lucide icons for injected content
-    if (window.lucide) lucide.createIcons();
-  }
-
-  function showLoading(text) {
-    aiSection.classList.remove('hidden');
-    qqaResponse.innerHTML = `
-      <div class="loading-state">
-        ${text} <span class="typing-dots"><span></span><span></span><span></span></span>
-      </div>
-    `;
-    qqaResponse.scrollIntoView({ behavior: 'smooth' });
-  }
-
-  // --- Core Logic ---
-
-  async function askAI(prompt, useVision = false) {
-    showLoading(useVision ? "AI is analyzing screen..." : "AI is thinking...");
-
-    try {
-      const payload = {};
-
-      // Context from transcript
-      const transcript = transcriptBox.innerText.trim();
-      if (transcript) {
-        payload.transcript = `Context Transcript:\n${transcript}\n\nUser Question: ${prompt}`;
-      } else {
-        payload.transcript = prompt;
-      }
-
-      // Context from last image if vision is enabled
-      if (useVision && captures.length > 0) {
-        payload.imageBase64 = captures[captures.length - 1];
-      }
-
-      const data = await apiCall(payload);
-      qqaResponse.innerHTML = formatAIResponse(data.answer || "No response received.");
-    } catch (e) {
-      qqaResponse.innerHTML = `<span style="color:var(--danger-color)">Error: ${e.message}</span>`;
-    }
-  }
-
-  // --- Event Listeners ---
-
-  // Recording
-  mainRecordBtn.addEventListener('click', () => {
-    if (!isRecording) {
-      sessionId = crypto.randomUUID();
-      transcriptBox.innerHTML = '';
-      chrome.runtime.sendMessage({ type: 'toggle-recording' }, (res) => {
-        if (chrome.runtime.lastError) return toast('Error: ' + chrome.runtime.lastError.message);
-        updateUIStarted();
-      });
+    if (mode === 'recording') {
+      transcriptView.classList.remove('hidden');
+      toolbar.classList.remove('hidden');
+      transcriptTools.classList.remove('hidden');
+    } else if (mode === 'captured') {
+      captureView.classList.remove('hidden');
+      toolbar.classList.remove('hidden');
+      imageTools.classList.remove('hidden');
     } else {
-      chrome.runtime.sendMessage({ type: 'toggle-recording' });
-      updateUIStopped();
-      saveSessionToDashboard();
+      emptyView.classList.remove('hidden');
     }
-  });
+  }
+
+  // --- AI Drawer Controls ---
+  aiDrawerHandle.onclick = () => {
+    aiDrawer.classList.toggle('collapsed');
+    aiDrawer.classList.toggle('expanded');
+  };
+
+  function updateAIResult(html, expand = true) {
+    aiDrawer.classList.remove('hidden');
+    qqaResponse.innerHTML = html;
+    if (expand) {
+      aiDrawer.classList.remove('collapsed');
+      aiDrawer.classList.add('expanded');
+    }
+  }
+
+  function showAILoading(text) {
+    updateAIResult(`<div class="loading-state">${text}...</div>`, true);
+  }
+
+  // --- Recording Control ---
+  mainRecordBtn.onclick = () => {
+    if (!isRecording) startSession();
+    else stopSession();
+  };
+
+  function startSession() {
+    sessionId = crypto.randomUUID();
+    aggregatedTranscript = '';
+    transcriptEl.innerHTML = '';
+    chrome.runtime.sendMessage({ type: 'toggle-recording' }, (response) => {
+      if (chrome.runtime.lastError) return toast('Error: ' + chrome.runtime.lastError.message);
+      updateUIStarted();
+      setMode('recording');
+    });
+  }
+
+  function stopSession() {
+    chrome.runtime.sendMessage({ type: 'toggle-recording' });
+    updateUIStopped();
+    saveSessionToDashboard();
+  }
 
   function updateUIStarted() {
     isRecording = true;
     mainRecordBtn.classList.add('recording');
-    recordText.textContent = 'Stop Recording';
-    liveIndicator.classList.remove('hidden');
+    recordText.textContent = 'Stop';
   }
 
   function updateUIStopped() {
     isRecording = false;
     mainRecordBtn.classList.remove('recording');
-    recordText.textContent = 'Start Recording';
-    liveIndicator.classList.add('hidden');
+    recordText.textContent = 'Record';
   }
 
-  // Transcript Actions
-  copyTranscriptBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(transcriptBox.innerText);
-    toast('Transcript copied to clipboard');
-  });
-
-  clearTranscriptBtn.addEventListener('click', () => {
-    if (confirm('Clear transcript?')) transcriptBox.innerHTML = '';
-  });
-
-  regenerateSummaryBtn.addEventListener('click', () => {
-    const text = transcriptBox.innerText.trim();
-    if (!text) return toast('Transcript is empty');
-    askAI("Summarize this transcript concisely.");
-  });
-
-  // Tools
-  captureBtn.addEventListener('click', async () => {
+  // --- Capture Flow ---
+  captureBtn.onclick = async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
 
-    // Flash effect
-    document.body.style.opacity = '0.5';
-    setTimeout(() => document.body.style.opacity = '1', 100);
+    chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 100 }, (dataUrl) => {
+      if (chrome.runtime.lastError) return toast('Capture Error: ' + chrome.runtime.lastError.message);
 
-    chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 80 }, (dataUrl) => {
-      if (chrome.runtime.lastError) return toast("Capture Error: " + chrome.runtime.lastError.message);
-      captures.push(dataUrl);
-      renderCaptures();
-      toast("Screen captured");
+      activeCapture = dataUrl;
+      activeCaptureImg.src = dataUrl;
+      setMode('captured');
+
+      // Flash effect
+      body.style.opacity = '0.5';
+      setTimeout(() => body.style.opacity = '1', 100);
     });
-  });
+  };
 
-  summarizeBtn.addEventListener('click', () => {
-    const text = transcriptBox.innerText.trim();
-    if (!text) return toast('Transcript is empty');
-    askAI("Provide a detailed meeting summary with key action items.");
-  });
+  emptyCaptureBtn.onclick = () => captureBtn.click();
 
-  analyzeVisionBtn.addEventListener('click', () => {
-    if (captures.length === 0) return toast('No captures to analyze');
-    askAI("Analyze this screen in the context of our meeting.", true);
-  });
+  deleteCaptureBtn.onclick = () => {
+    activeCapture = null;
+    setMode('empty');
+  };
 
-  // Unified Input
-  const handleSend = () => {
-    const prompt = askInput.value.trim();
-    if (!prompt) return;
+  // --- AI Actions ---
+  summarizeTranscriptBtn.onclick = async () => {
+    if (!aggregatedTranscript.trim()) return toast('Nothing to summarize');
+    showAILoading('Synthesizing transcript');
+    try {
+      const data = await apiCall({
+        transcript: `Highlight the key points and decisions from this transcript:\n\n${aggregatedTranscript}`
+      });
+      updateAIResult(formatAIResponse(data.answer));
+    } catch (e) {
+      updateAIResult(`<span style="color:var(--danger)">Error: ${e.message}</span>`);
+    }
+  };
+
+  extractTasksBtn.onclick = async () => {
+    if (!aggregatedTranscript.trim()) return toast('Nothing to extract');
+    showAILoading('Extracting action items');
+    try {
+      const data = await apiCall({
+        transcript: `List only the action items and owners from this meeting:\n\n${aggregatedTranscript}`
+      });
+      updateAIResult(formatAIResponse(data.answer));
+    } catch (e) {
+      updateAIResult(`<span style="color:var(--danger)">Error: ${e.message}</span>`);
+    }
+  };
+
+  analyzeImageBtn.onclick = async () => {
+    if (!activeCapture) return;
+    showAILoading('Analyzing screen');
+    try {
+      const data = await apiCall({ imageBase64: activeCapture });
+      updateAIResult(formatAIResponse(data.answer));
+    } catch (e) {
+      updateAIResult(`<span style="color:var(--danger)">Error: ${e.message}</span>`);
+    }
+  };
+
+  ocrImageBtn.onclick = async () => {
+    if (!activeCapture) return;
+    showAILoading('Extracting text from image');
+    try {
+      const data = await apiCall({
+        imageBase64: activeCapture,
+        transcript: "Extract all visible text from this image exactly as it appears."
+      });
+      updateAIResult(formatAIResponse(data.answer));
+    } catch (e) {
+      updateAIResult(`<span style="color:var(--danger)">Error: ${e.message}</span>`);
+    }
+  };
+
+  const askAI = async () => {
+    const q = askInput.value.trim();
+    if (!q) return;
     askInput.value = '';
 
-    // If we have an image, default to vision analysis if requested or just context
-    askAI(prompt, captures.length > 0);
+    showAILoading('Thinking');
+    try {
+      const payload = { transcript: q };
+      if (activeCapture) payload.imageBase64 = activeCapture;
+      // Add context if available
+      if (aggregatedTranscript) payload.transcript = `Context:\n${aggregatedTranscript}\n\nUser Question: ${q}`;
+
+      const data = await apiCall(payload);
+      updateAIResult(formatAIResponse(data.answer));
+    } catch (e) {
+      updateAIResult(`<span style="color:var(--danger)">Error: ${e.message}</span>`);
+    }
   };
 
-  sendAskBtn.addEventListener('click', handleSend);
-  askInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleSend();
-  });
+  sendAskBtn.onclick = askAI;
+  askInput.onkeypress = (e) => e.key === 'Enter' && askAI();
 
-  clearAiBtn.addEventListener('click', () => {
-    aiSection.classList.add('hidden');
-    qqaResponse.innerHTML = '';
-  });
-
-  // Settings
-  saveSettingsBtn.addEventListener('click', () => {
-    chrome.storage.local.set({
-      model: modelSelect.value,
-      vercelUrl: urlInput.value
-    }, () => toast('Settings saved'));
-  });
-
-  dashboardLink.onclick = () => {
-    chrome.storage.local.get(['vercelUrl'], s => {
-      chrome.tabs.create({ url: s.vercelUrl || 'https://spatial-expanse.vercel.app' });
-    });
-  };
-
-  // Keyboard Shortcuts
-  document.addEventListener('keydown', (e) => {
-    // Ctrl + E to edit transcript
-    if (e.ctrlKey && e.key === 'e') {
-      e.preventDefault();
-      transcriptBox.focus();
-    }
-    // Delete key to remove last capture if focused on grid or panel
-    if (e.key === 'Delete' && captures.length > 0) {
-      if (document.activeElement.closest('.capture-section') || document.activeElement === document.body) {
-        captures.pop();
-        renderCaptures();
-        toast('Last capture removed');
-      }
-    }
-  });
-
-  // --- Background Messages ---
+  // --- Messages listener ---
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === 'trigger-capture') captureBtn.click();
-    if (msg.type === 'recording-started') updateUIStarted();
+    if (msg.type === 'recording-started') { updateUIStarted(); setMode('recording'); }
     if (msg.type === 'recording-stopped') updateUIStopped();
+    if (msg.type === 'trigger-capture') captureBtn.click();
 
     if (msg.type === 'transcript-chunk') {
       const text = msg.text || '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      transcriptBox.appendChild(div);
-      transcriptBox.scrollTop = transcriptBox.scrollHeight;
+      aggregatedTranscript += text + ' ';
+      transcriptEl.innerHTML = aggregatedTranscript.trim();
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+      if (isRecording && transcriptView.classList.contains('hidden')) setMode('recording');
     }
-
-    if (msg.type === 'error') toast(msg.message);
   });
 
   // --- Helpers ---
-
   async function apiCall(payload) {
     const { provider, vercelUrl, model } = await new Promise(r => chrome.storage.local.get(['provider', 'vercelUrl', 'model'], r));
     const url = vercelUrl || 'https://spatial-expanse.vercel.app';
@@ -282,11 +250,45 @@ document.addEventListener('DOMContentLoaded', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ provider: provider || 'google', model, ...payload })
     });
-    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+    if (!res.ok) throw new Error(`Server ${res.status}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     return data;
   }
+
+  function formatAIResponse(t) {
+    if (!t) return 'No response.';
+    return t.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+  }
+
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.style = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#ef4444;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5);';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+
+  // --- Utilites ---
+  copyTranscriptBtn.onclick = () => {
+    navigator.clipboard.writeText(aggregatedTranscript);
+    toast('Copied to clipboard');
+  };
+  clearTranscriptBtn.onclick = () => {
+    aggregatedTranscript = '';
+    transcriptEl.innerHTML = '';
+  };
+  saveSettingsBtn.onclick = () => {
+    chrome.storage.local.set({
+      model: modelSelect.value,
+      vercelUrl: urlInput.value
+    }, () => toast('Settings Saved'));
+  };
+  dashboardLink.onclick = () => {
+    chrome.storage.local.get(['vercelUrl'], s => {
+      chrome.tabs.create({ url: s.vercelUrl || 'https://spatial-expanse.vercel.app' });
+    });
+  };
 
   function saveSessionToDashboard() {
     chrome.storage.local.get(['vercelUrl'], async (s) => {
@@ -298,26 +300,11 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({
             id: sessionId,
             timestamp: new Date().toISOString(),
-            transcript: transcriptBox.innerText,
+            transcript: aggregatedTranscript,
             title: 'Meeting ' + new Date().toLocaleTimeString()
           })
         });
-      } catch (e) { console.error('Dashboard sync failed', e); }
+      } catch (e) { console.error('Sync failed', e); }
     });
-  }
-
-  function formatAIResponse(t) {
-    if (!t) return 'No response.';
-    return t.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-      .replace(/\*(.*?)\*/g, '<i>$1</i>')
-      .replace(/\n/g, '<br>');
-  }
-
-  function toast(msg) {
-    const t = document.createElement('div');
-    t.style = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(33,38,45,0.9);color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;z-index:10000;border:1px solid #30363d;backdrop-filter:blur(10px);box-shadow:var(--shadow-lg);';
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
   }
 });
