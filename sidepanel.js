@@ -1,45 +1,45 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // UI References
+  // --- UI References ---
   const mainRecordBtn = document.getElementById('main-record-toggle');
-  const listenMode = document.getElementById('listen-mode');
-  const transcriptEl = document.getElementById('live-transcript');
-  const statusText = document.getElementById('status-text');
-  const liveDot = document.getElementById('live-dot');
-  const waveform = document.getElementById('waveform');
-  const bars = waveform.querySelectorAll('.bar');
+  const recordText = document.getElementById('record-text');
+  const liveIndicator = document.getElementById('live-indicator');
+
+  const transcriptBox = document.getElementById('live-transcript');
+  const copyTranscriptBtn = document.getElementById('copy-transcript');
+  const clearTranscriptBtn = document.getElementById('clear-transcript');
+  const regenerateSummaryBtn = document.getElementById('regenerate-summary');
 
   const captureBtn = document.getElementById('capture-screen');
-  const previewArea = document.getElementById('capture-preview-area');
-  const screenshotPreview = document.getElementById('screenshot-preview');
-  const annotationCanvas = document.getElementById('annotation-canvas');
-  const annotateBtn = document.getElementById('annotate-image');
-  const saveEditsBtn = document.getElementById('save-annotation');
-  const summarizeImageBtn = document.getElementById('summarize-image');
+  const summarizeBtn = document.getElementById('summarize-transcript');
+  const analyzeVisionBtn = document.getElementById('analyze-vision');
+
+  const capturePanel = document.getElementById('capture-panel');
+  const captureGrid = document.getElementById('capture-grid');
+  const captureCountBadge = document.getElementById('capture-count');
+  const captureItemTemplate = document.getElementById('capture-item-template');
+
+  const aiSection = document.getElementById('ai-response-section');
+  const qqaResponse = document.getElementById('qqa-response');
+  const clearAiBtn = document.getElementById('clear-ai-chat');
 
   const askInput = document.getElementById('ask-input');
   const sendAskBtn = document.getElementById('send-ask');
-  const qqaResponse = document.getElementById('qqa-response');
-  const summarizeBtn = document.getElementById('summarize');
-  const dashboardLink = document.getElementById('dashboard-link');
 
-  const providerSelect = document.getElementById('provider-select');
   const modelSelect = document.getElementById('model-select');
   const urlInput = document.getElementById('vercel-url-input');
   const saveSettingsBtn = document.getElementById('save-settings');
+  const dashboardLink = document.getElementById('dashboard-link');
 
-  // State
+  // --- State ---
   let isRecording = false;
-  let screenshotDataUrl = null;
+  let captures = []; // Array of capture data URLs
   let aggregatedTranscript = '';
   let sessionId = crypto.randomUUID();
-  let ttsEnabled = true;
 
-  // Initial Load
-  chrome.storage.local.get(['provider', 'model', 'vercelUrl', 'tts', 'isRecording'], (s) => {
-    providerSelect.value = s.provider || 'google';
-    modelSelect.value = s.model || (s.provider === 'openai' ? 'gpt-4o' : 'gemini-2.0-flash');
-    urlInput.value = s.vercelUrl || 'https://spatial-expanse.vercel.app';
-    ttsEnabled = s.tts !== false;
+  // --- Initial Load ---
+  chrome.storage.local.get(['provider', 'model', 'vercelUrl', 'isRecording'], (s) => {
+    if (s.model) modelSelect.value = s.model;
+    if (s.vercelUrl) urlInput.value = s.vercelUrl;
 
     // Resume state if background is already recording
     chrome.runtime.sendMessage({ type: 'get-state' }, (res) => {
@@ -49,205 +49,231 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Settings
-  saveSettingsBtn.addEventListener('click', () => {
-    chrome.storage.local.set({
-      provider: providerSelect.value,
-      model: modelSelect.value,
-      vercelUrl: urlInput.value
-    }, () => toast('Configuration updated'));
-  });
+  // --- Rendering Functions ---
+  function renderCaptures() {
+    captureGrid.innerHTML = '';
+    captureCountBadge.textContent = captures.length;
 
-  // Recording Logic
+    if (captures.length === 0) {
+      capturePanel.classList.add('hidden');
+      analyzeVisionBtn.classList.add('hidden');
+      return;
+    }
+
+    capturePanel.classList.remove('hidden');
+    analyzeVisionBtn.classList.remove('hidden');
+
+    captures.forEach((dataUrl, index) => {
+      const clone = captureItemTemplate.content.cloneNode(true);
+      const img = clone.querySelector('.capture-img');
+      const deleteBtn = clone.querySelector('.delete-capture');
+      const expandBtn = clone.querySelector('.expand-capture');
+
+      img.src = dataUrl;
+
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        captures.splice(index, 1);
+        renderCaptures();
+      });
+
+      expandBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const win = window.open();
+        win.document.write(`<img src="${dataUrl}" style="width:100%">`);
+      });
+
+      captureGrid.appendChild(clone);
+    });
+
+    // Refresh Lucide icons for injected content
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function showLoading(text) {
+    aiSection.classList.remove('hidden');
+    qqaResponse.innerHTML = `
+      <div class="loading-state">
+        ${text} <span class="typing-dots"><span></span><span></span><span></span></span>
+      </div>
+    `;
+    qqaResponse.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // --- Core Logic ---
+
+  async function askAI(prompt, useVision = false) {
+    showLoading(useVision ? "AI is analyzing screen..." : "AI is thinking...");
+
+    try {
+      const payload = {};
+
+      // Context from transcript
+      const transcript = transcriptBox.innerText.trim();
+      if (transcript) {
+        payload.transcript = `Context Transcript:\n${transcript}\n\nUser Question: ${prompt}`;
+      } else {
+        payload.transcript = prompt;
+      }
+
+      // Context from last image if vision is enabled
+      if (useVision && captures.length > 0) {
+        payload.imageBase64 = captures[captures.length - 1];
+      }
+
+      const data = await apiCall(payload);
+      qqaResponse.innerHTML = formatAIResponse(data.answer || "No response received.");
+    } catch (e) {
+      qqaResponse.innerHTML = `<span style="color:var(--danger-color)">Error: ${e.message}</span>`;
+    }
+  }
+
+  // --- Event Listeners ---
+
+  // Recording
   mainRecordBtn.addEventListener('click', () => {
     if (!isRecording) {
-      startSession();
+      sessionId = crypto.randomUUID();
+      transcriptBox.innerHTML = '';
+      chrome.runtime.sendMessage({ type: 'toggle-recording' }, (res) => {
+        if (chrome.runtime.lastError) return toast('Error: ' + chrome.runtime.lastError.message);
+        updateUIStarted();
+      });
     } else {
-      stopSession();
+      chrome.runtime.sendMessage({ type: 'toggle-recording' });
+      updateUIStopped();
+      saveSessionToDashboard();
     }
   });
 
-  function startSession() {
-    sessionId = crypto.randomUUID();
-    aggregatedTranscript = '';
-    transcriptEl.innerHTML = '<div class="transcribing">Connecting to audio stream...</div>';
-
-    chrome.runtime.sendMessage({ type: 'toggle-recording' }, (response) => {
-      if (chrome.runtime.lastError) {
-        toast('Extension Sync Error: ' + chrome.runtime.lastError.message);
-        updateUIStopped();
-        return;
-      }
-      updateUIStarted();
-    });
-  }
-
-  function stopSession() {
-    chrome.runtime.sendMessage({ type: 'toggle-recording' });
-    updateUIStopped();
-    saveSessionToDashboard();
-  }
-
   function updateUIStarted() {
     isRecording = true;
-    mainRecordBtn.innerHTML = '<span class="icon">⏹️</span> Stop Recording';
     mainRecordBtn.classList.add('recording');
-    statusText.textContent = 'Recording Live';
-    liveDot.classList.remove('hidden');
+    recordText.textContent = 'Stop Recording';
+    liveIndicator.classList.remove('hidden');
   }
 
   function updateUIStopped() {
     isRecording = false;
-    mainRecordBtn.innerHTML = '<span class="icon">🔴</span> Start Recording';
     mainRecordBtn.classList.remove('recording');
-    statusText.textContent = 'Inactive';
-    liveDot.classList.add('hidden');
-    bars.forEach(b => { b.style.height = '4px'; b.style.opacity = '0.2'; });
+    recordText.textContent = 'Start Recording';
+    liveIndicator.classList.add('hidden');
   }
 
-  // Capture Screen
+  // Transcript Actions
+  copyTranscriptBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(transcriptBox.innerText);
+    toast('Transcript copied to clipboard');
+  });
+
+  clearTranscriptBtn.addEventListener('click', () => {
+    if (confirm('Clear transcript?')) transcriptBox.innerHTML = '';
+  });
+
+  regenerateSummaryBtn.addEventListener('click', () => {
+    const text = transcriptBox.innerText.trim();
+    if (!text) return toast('Transcript is empty');
+    askAI("Summarize this transcript concisely.");
+  });
+
+  // Tools
   captureBtn.addEventListener('click', async () => {
-    // Check if we have host permissions for the current tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
 
+    // Flash effect
+    document.body.style.opacity = '0.5';
+    setTimeout(() => document.body.style.opacity = '1', 100);
+
     chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 80 }, (dataUrl) => {
-      if (chrome.runtime.lastError) {
-        const err = chrome.runtime.lastError.message;
-        if (err.includes('permission') || err.includes('invoked')) {
-          toast('🔒 Click the Extension Icon in the toolbar once to allow access to this page.');
-        } else {
-          toast('Capture Error: ' + err);
-        }
-        console.error('CAPTURE_ERROR:', err);
-        return;
-      }
-      if (!dataUrl) { toast('Capture failed'); return; }
-
-      screenshotDataUrl = dataUrl;
-      screenshotPreview.src = dataUrl;
-      previewArea.classList.remove('hidden');
-      screenshotPreview.classList.remove('hidden');
-      annotationCanvas.classList.add('hidden');
-      annotateBtn.classList.remove('hidden');
-      saveEditsBtn.classList.add('hidden');
-
-      previewArea.scrollIntoView({ behavior: 'smooth' });
+      if (chrome.runtime.lastError) return toast("Capture Error: " + chrome.runtime.lastError.message);
+      captures.push(dataUrl);
+      renderCaptures();
+      toast("Screen captured");
     });
   });
 
-  // Annotation Logic
-  let drawing = false, lx = 0, ly = 0;
-  annotateBtn.addEventListener('click', () => {
-    const img = new Image();
-    img.onload = () => {
-      screenshotPreview.classList.add('hidden');
-      annotationCanvas.classList.remove('hidden');
-      const ctx = annotationCanvas.getContext('2d');
-      const scale = Math.min(1, 400 / img.width);
-      annotationCanvas.width = img.width * scale;
-      annotationCanvas.height = img.height * scale;
-      ctx.drawImage(img, 0, 0, annotationCanvas.width, annotationCanvas.height);
-      ctx.lineWidth = 4; ctx.strokeStyle = '#58a6ff'; ctx.lineCap = 'round';
-
-      annotationCanvas.onmousedown = e => { drawing = true;[lx, ly] = [e.offsetX, e.offsetY]; };
-      annotationCanvas.onmousemove = e => {
-        if (!drawing) return;
-        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(e.offsetX, e.offsetY);
-        ctx.stroke();[lx, ly] = [e.offsetX, e.offsetY];
-      };
-      annotationCanvas.onmouseup = () => drawing = false;
-
-      annotateBtn.classList.add('hidden');
-      saveEditsBtn.classList.remove('hidden');
-    };
-    img.src = screenshotDataUrl;
+  summarizeBtn.addEventListener('click', () => {
+    const text = transcriptBox.innerText.trim();
+    if (!text) return toast('Transcript is empty');
+    askAI("Provide a detailed meeting summary with key action items.");
   });
 
-  saveEditsBtn.addEventListener('click', () => {
-    screenshotDataUrl = annotationCanvas.toDataURL('image/jpeg', 0.8);
-    annotationCanvas.classList.add('hidden');
-    screenshotPreview.src = screenshotDataUrl;
-    screenshotPreview.classList.remove('hidden');
-    saveEditsBtn.classList.add('hidden');
-    annotateBtn.classList.remove('hidden');
+  analyzeVisionBtn.addEventListener('click', () => {
+    if (captures.length === 0) return toast('No captures to analyze');
+    askAI("Analyze this screen in the context of our meeting.", true);
   });
 
-  // AI Logic
-  summarizeImageBtn.addEventListener('click', async () => {
-    if (!screenshotDataUrl) return;
-    qqaResponse.classList.remove('hidden');
-    qqaResponse.textContent = 'AI is observing screen...';
-    try {
-      const data = await apiCall({ imageBase64: screenshotDataUrl });
-      qqaResponse.innerHTML = formatAIResponse(data.answer || 'No analysis available.');
-    } catch (e) {
-      qqaResponse.innerHTML = `<span style="color:var(--danger)">Analysis Error: ${e.message}</span>`;
-    }
-  });
-
-  summarizeBtn.addEventListener('click', async () => {
-    if (!aggregatedTranscript.trim()) return toast('No transcript to summarize');
-    qqaResponse.classList.remove('hidden');
-    qqaResponse.textContent = 'Deep-summarizing meeting points...';
-    try {
-      const data = await apiCall({
-        transcript: `Provide a detailed meeting summary with action items from this transcript:\n\n${aggregatedTranscript}`
-      });
-      qqaResponse.innerHTML = formatAIResponse(data.answer);
-    } catch (e) {
-      qqaResponse.textContent = 'Summary failed: ' + e.message;
-    }
-  });
-
-  const sendQuestion = async () => {
-    const q = askInput.value.trim();
-    if (!q) return;
+  // Unified Input
+  const handleSend = () => {
+    const prompt = askInput.value.trim();
+    if (!prompt) return;
     askInput.value = '';
-    qqaResponse.classList.remove('hidden');
-    qqaResponse.textContent = 'Reasoning...';
-    try {
-      const ctx = aggregatedTranscript ? `Transcript Context:\n${aggregatedTranscript}\n\n` : '';
-      const data = await apiCall({ transcript: ctx + 'User Question: ' + q });
-      qqaResponse.innerHTML = formatAIResponse(data.answer);
-    } catch (e) {
-      qqaResponse.textContent = 'Error: ' + e.message;
-    }
+
+    // If we have an image, default to vision analysis if requested or just context
+    askAI(prompt, captures.length > 0);
   };
 
-  askInput.addEventListener('keypress', e => e.key === 'Enter' && sendQuestion());
-  sendAskBtn.addEventListener('click', sendQuestion);
+  sendAskBtn.addEventListener('click', handleSend);
+  askInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleSend();
+  });
 
-  // Background Messages
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === 'trigger-capture') {
-      captureBtn.click();
+  clearAiBtn.addEventListener('click', () => {
+    aiSection.classList.add('hidden');
+    qqaResponse.innerHTML = '';
+  });
+
+  // Settings
+  saveSettingsBtn.addEventListener('click', () => {
+    chrome.storage.local.set({
+      model: modelSelect.value,
+      vercelUrl: urlInput.value
+    }, () => toast('Settings saved'));
+  });
+
+  dashboardLink.onclick = () => {
+    chrome.storage.local.get(['vercelUrl'], s => {
+      chrome.tabs.create({ url: s.vercelUrl || 'https://spatial-expanse.vercel.app' });
+    });
+  };
+
+  // Keyboard Shortcuts
+  document.addEventListener('keydown', (e) => {
+    // Ctrl + E to edit transcript
+    if (e.ctrlKey && e.key === 'e') {
+      e.preventDefault();
+      transcriptBox.focus();
     }
+    // Delete key to remove last capture if focused on grid or panel
+    if (e.key === 'Delete' && captures.length > 0) {
+      if (document.activeElement.closest('.capture-section') || document.activeElement === document.body) {
+        captures.pop();
+        renderCaptures();
+        toast('Last capture removed');
+      }
+    }
+  });
 
+  // --- Background Messages ---
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'trigger-capture') captureBtn.click();
     if (msg.type === 'recording-started') updateUIStarted();
     if (msg.type === 'recording-stopped') updateUIStopped();
 
-    if (msg.type === 'volume') {
-      const v = Math.min(1, msg.value || 0);
-      bars.forEach((b, i) => {
-        const scale = Math.max(0.1, v * (0.6 + i * 0.15));
-        b.style.height = `${4 + scale * 20}px`;
-        b.style.opacity = 0.2 + scale * 0.8;
-      });
-    }
-
     if (msg.type === 'transcript-chunk') {
       const text = msg.text || '';
-      aggregatedTranscript += text + ' ';
-      transcriptEl.innerHTML = aggregatedTranscript.trim();
-      if (transcriptEl.querySelectorAll('.empty-state').length) transcriptEl.innerHTML = text;
-      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+      const div = document.createElement('div');
+      div.textContent = text;
+      transcriptBox.appendChild(div);
+      transcriptBox.scrollTop = transcriptBox.scrollHeight;
     }
 
     if (msg.type === 'error') toast(msg.message);
   });
 
-  // Local Helpers
+  // --- Helpers ---
+
   async function apiCall(payload) {
     const { provider, vercelUrl, model } = await new Promise(r => chrome.storage.local.get(['provider', 'vercelUrl', 'model'], r));
     const url = vercelUrl || 'https://spatial-expanse.vercel.app';
@@ -272,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({
             id: sessionId,
             timestamp: new Date().toISOString(),
-            transcript: aggregatedTranscript,
+            transcript: transcriptBox.innerText,
             title: 'Meeting ' + new Date().toLocaleTimeString()
           })
         });
@@ -288,18 +314,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function toast(msg) {
-    console.log('[AI Assistant]', msg);
-    // Simple UI feedback if possible, or just console
     const t = document.createElement('div');
-    t.style = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#21262d;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;z-index:9999;border:1px solid #30363d;box-shadow:0 8px 24px rgba(0,0,0,0.5);';
+    t.style = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(33,38,45,0.9);color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;z-index:10000;border:1px solid #30363d;backdrop-filter:blur(10px);box-shadow:var(--shadow-lg);';
     t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 3000);
   }
-
-  dashboardLink.onclick = () => {
-    chrome.storage.local.get(['vercelUrl'], s => {
-      chrome.tabs.create({ url: s.vercelUrl || 'https://spatial-expanse.vercel.app' });
-    });
-  };
 });
