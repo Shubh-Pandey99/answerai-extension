@@ -4,60 +4,415 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AnswerAI | Meeting Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Scribe — Session Dashboard</title>
+    <link rel="icon" type="image/png" href="/api/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #21262d;
+            --border: rgba(255, 255, 255, 0.08);
+            --primary: #58a6ff;
+            --primary-glow: rgba(88, 166, 255, 0.25);
+            --text: #f0f6fc;
+            --muted: #8b949e;
+            --success: #3fb950;
+            --danger: #f85149;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 32px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: blur(12px);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .brand-text h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .brand-text p {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(63, 185, 80, 0.1);
+            border: 1px solid rgba(63, 185, 80, 0.25);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        .pulse {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.4
+            }
+        }
+
+        /* Main */
+        .main {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            border-color: rgba(88, 166, 255, 0.3);
+            box-shadow: 0 0 20px rgba(88, 166, 255, 0.08);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -1px;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--muted);
+        }
+
+        /* Section */
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 16px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* Session cards */
+        .sessions-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .session-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 20px;
+            cursor: pointer;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: start;
+            gap: 12px;
+            transition: all 0.18s ease;
+        }
+
+        .session-card:hover {
+            border-color: rgba(88, 166, 255, 0.35);
+            box-shadow: 0 2px 20px rgba(88, 166, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .session-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .session-preview {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .session-date {
+            font-size: 11px;
+            color: var(--muted);
+            white-space: nowrap;
+            background: var(--surface2);
+            border-radius: 6px;
+            padding: 4px 8px;
+        }
+
+        .session-words {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 64px 24px;
+            color: var(--muted);
+        }
+
+        .empty-icon {
+            font-size: 40px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 32px;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--surface2);
+            border: none;
+            color: var(--muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            color: var(--text);
+            background: var(--border);
+        }
+
+        .modal-date {
+            font-size: 11px;
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+
+        .modal-section {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        .modal-transcript {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #c9d1d9;
+            white-space: pre-wrap;
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        @media(max-width:600px) {
+            header {
+                padding: 16px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .main {
+                padding: 20px 16px;
+            }
+        }
+    </style>
 </head>
 
 <body>
-    <div class="container">
-        <header>
-            <div class="brand-box">
-                <h1>AnswerAI</h1>
-                <p style="color: var(--text-muted); margin-top: 4px;">Meeting Insights Dashboard</p>
+    <header>
+        <div class="brand">
+            <img class="brand-icon" src="/api/favicon.png" alt="Scribe">
+            <div class="brand-text">
+                <h1>Scribe</h1>
+                <p>Session Dashboard</p>
             </div>
-            <div class="actions">
-                <button class="stat-label"
-                    style="background: var(--glass); border: 1px solid var(--border); padding: 8px 16px; border-radius: 99px; color: var(--text);">Sync
-                    Status: Active</button>
-            </div>
-        </header>
+        </div>
+        <div class="status-pill">
+            <div class="pulse"></div>
+            API Active
+        </div>
+    </header>
 
-        <div class="stats-grid">
+    <main class="main">
+        <div class="stats">
             <div class="stat-card">
                 <div class="stat-value" id="stat-total">0</div>
-                <div class="stat-label">Total Meetings</div>
+                <div class="stat-label">Sessions Recorded</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="stat-words">0</div>
-                <div class="stat-label">Words Logged</div>
+                <div class="stat-label">Words Transcribed</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="stat-latest">--</div>
-                <div class="stat-label">Last Interaction</div>
+                <div class="stat-label">Last Session</div>
             </div>
         </div>
 
-        <h2 class="section-title"><span>🕒</span> Recent Sessions</h2>
-        <div class="meetings-grid" id="meetings-container">
-            <div id="empty-state">No meetings recorded yet. Start a session in the AI Assistant extension!</div>
+        <div class="section-title">Recent Sessions</div>
+        <div class="sessions-grid" id="sessions-container">
+            <div class="empty-state">
+                <div class="empty-icon">🎙️</div>
+                <h3>No sessions yet</h3>
+                <p>Start a recording in the Scribe extension<br>and your sessions will appear here.</p>
+            </div>
         </div>
-    </div>
+    </main>
 
     <!-- Modal -->
-    <div class="modal" id="meeting-modal">
-        <div class="modal-content">
-            <button class="close-modal" id="close-modal">×</button>
-            <div id="modal-date" class="meeting-date"></div>
-            <h2 id="modal-title" style="font-size: 2rem; margin-bottom: 24px;"></h2>
-            <div class="section-title">Transcript Context</div>
-            <div id="modal-transcript" class="full-transcript"></div>
+    <div class="modal" id="modal">
+        <div class="modal-card">
+            <button class="modal-close" id="modal-close">×</button>
+            <div class="modal-date" id="modal-date"></div>
+            <div class="modal-title" id="modal-title"></div>
+            <div class="modal-section">Transcript</div>
+            <div class="modal-transcript" id="modal-transcript"></div>
         </div>
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Override script.js brand references if any
+        document.title = 'Scribe — Session Dashboard';
+    </script>
 </body>
 
 </html>
