@@ -139,8 +139,60 @@ def get_provider(name):
 app = Flask(__name__)
 CORS(app, resources={r"/*":{"origins":["chrome-extension://*","http://localhost:*","http://127.0.0.1:*"]}})
 
+import mimetypes
+from flask import send_file
+
+@app.get("/favicon.ico")
+@app.get("/favicon.png")
+def favicon():
+    ico = os.path.join(os.path.dirname(__file__), "favicon.png")
+    if os.path.exists(ico):
+        return send_file(ico, mimetype="image/png")
+    return "", 204
+
 @app.get("/")
-def root(): return "✅ AnswerAI API is running", 200
+def root():
+    return """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Scribe API</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;background:#0d1117;color:#f0f6fc;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+    .card{text-align:center;padding:48px 40px;max-width:480px;}
+    .icon{width:80px;height:80px;border-radius:20px;margin:0 auto 24px;display:block;box-shadow:0 0 40px rgba(88,166,255,0.35);}
+    h1{font-size:28px;font-weight:700;letter-spacing:-0.5px;margin-bottom:8px;}
+    .badge{display:inline-block;background:rgba(63,185,80,0.15);color:#3fb950;border:1px solid rgba(63,185,80,0.3);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;margin-bottom:24px;}
+    p{color:#8b949e;font-size:14px;line-height:1.7;margin-bottom:32px;}
+    .endpoints{background:#161b22;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;text-align:left;}
+    .endpoint{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;}
+    .endpoint:last-child{border-bottom:none;}
+    .method{background:rgba(88,166,255,0.15);color:#58a6ff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;font-family:monospace;flex-shrink:0;}
+    .path{color:#e6edf3;font-family:monospace;font-size:12px;}
+    .desc{color:#8b949e;font-size:11px;margin-left:auto;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img class="icon" src="/favicon.png" alt="Scribe">
+    <h1>Scribe API</h1>
+    <div class="badge">● API Running</div>
+    <p>AI-powered live transcription, screen capture analysis,<br>and real-time Q&amp;A for the Scribe Chrome extension.</p>
+    <div class="endpoints">
+      <div class="endpoint"><span class="method">POST</span><span class="path">/api/transcribe</span><span class="desc">Audio → text</span></div>
+      <div class="endpoint"><span class="method">POST</span><span class="path">/api/answer</span><span class="desc">AI Q&amp;A</span></div>
+      <div class="endpoint"><span class="method">POST</span><span class="path">/api/sessions</span><span class="desc">Save session</span></div>
+      <div class="endpoint"><span class="method">GET</span><span class="path">/api/sessions</span><span class="desc">List sessions</span></div>
+      <div class="endpoint"><span class="method">GET</span><span class="path">/health</span><span class="desc">Health check</span></div>
+    </div>
+  </div>
+</body>
+</html>
+""", 200, {"Content-Type": "text/html"}
 
 @app.get("/health")
 def health(): return jsonify({"status":"ok"}), 200
