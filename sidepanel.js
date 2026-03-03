@@ -29,6 +29,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const askInput = document.getElementById('ask-input');
   const sendBtn = document.getElementById('send-btn');
   const dashboardBtn = document.getElementById('dashboard-btn');
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsOverlay = document.getElementById('settings-overlay');
+  const settingsCloseBtn = document.getElementById('settings-close-btn');
+  const retakeBtn = document.getElementById('retake-btn');
 
   // ====== STATE ======
   let isRecording = false;
@@ -347,22 +351,37 @@ document.addEventListener('DOMContentLoaded', () => {
   askInput.onkeypress = (e) => { if (e.key === 'Enter') sendBtn.click(); };
   dashboardBtn.onclick = () => { chrome.tabs.create({ url: 'https://spatial-expanse.vercel.app/dashboard' }); };
 
-  // --- Background messages ---
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === 'error') { showError(msg.message); logStatus("Error: " + msg.message); }
-    if (msg.type === 'trigger-capture') captureScreen();
-  });
-
-  logStatus("System ready.");
-
-  // Settings
+  // Settings modal
   const modelSelect = document.getElementById('model-select');
   const urlInput = document.getElementById('vercel-url-input');
-  document.getElementById('save-settings').onclick = () => {
-    chrome.storage.local.set({ model: modelSelect.value, vercelUrl: urlInput.value }, () => alert('Settings saved!'));
+
+  settingsBtn.onclick = () => {
+    settingsOverlay.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
   };
+  settingsCloseBtn.onclick = () => settingsOverlay.classList.add('hidden');
+  settingsOverlay.onclick = (e) => { if (e.target === settingsOverlay) settingsOverlay.classList.add('hidden'); };
+
+  document.getElementById('save-settings').onclick = () => {
+    chrome.storage.local.set({ model: modelSelect.value, vercelUrl: urlInput.value }, () => {
+      logStatus('Settings saved.');
+      settingsOverlay.classList.add('hidden');
+    });
+  };
+
   chrome.storage.local.get(['model', 'vercelUrl'], (res) => {
     if (res.model) modelSelect.value = res.model;
     if (res.vercelUrl) urlInput.value = res.vercelUrl;
   });
+
+  // Retake button (in captured view)
+  if (retakeBtn) retakeBtn.onclick = () => captureScreen();
+
+  // --- Background messages ---
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'error') { showError(msg.message); logStatus('Error: ' + msg.message); }
+    if (msg.type === 'trigger-capture') captureScreen();
+  });
+
+  logStatus('System ready.');
 });
