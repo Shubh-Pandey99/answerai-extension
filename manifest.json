@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "AI Meeting Assistant",
+  "name": "Synapse AI",
   "version": "2.0.0",
   "description": "Live transcription, screenshot understanding, and real-time Q&A with OpenAI/Gemini.",
   "background": {

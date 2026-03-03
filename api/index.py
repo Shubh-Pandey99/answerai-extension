@@ -178,26 +178,70 @@ def transcribe():
         if not audio_b64: return jsonify({"error":"No audioBase64"}), 400
 
         # decode to temp file
-        header, encoded = audio_b64.split(",",1)
+        if "," in audio_b64:
+            header, encoded = audio_b64.split(",",1)
+        else:
+            encoded = audio_b64
+        
         buf = base64.b64decode(encoded)
-        suffix = ".webm" if "webm" in mime else ".mp3"
+        log.info("Received audio chunk: %d bytes, mime=%s", len(buf), mime)
+        
+        if len(buf) < 100:
+            return jsonify({"text": ""}), 200  # Too small to transcribe
+        
+        suffix = ".webm" if "webm" in mime else ".ogg" if "ogg" in mime else ".mp3"
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
             f.write(buf)
             tmp_path = f.name
 
-        # call Whisper-1
+        text = ""
+        
+        # Try OpenAI Whisper first
         oai_key = os.getenv("OPENAI_API_KEY")
-        if not oai_key: return jsonify({"error":"OPENAI_API_KEY not configured for STT"}), 500
-        client = OpenAI(api_key=oai_key)
-        with open(tmp_path, "rb") as fp:
-            tr = client.audio.transcriptions.create(model="whisper-1", file=fp)
-        text = getattr(tr, "text", "").strip()
+        if oai_key:
+            try:
+                client = OpenAI(api_key=oai_key)
+                with open(tmp_path, "rb") as fp:
+                    tr = client.audio.transcriptions.create(model="whisper-1", file=fp)
+                text = getattr(tr, "text", "").strip()
+                log.info("Whisper result: '%s'", text[:100])
+            except Exception as e:
+                log.warning("Whisper failed: %s, trying Gemini fallback", e)
+        
+        # Fallback to Google Gemini for audio transcription
+        if not text:
+            google_key = os.getenv("GOOGLE_API_KEY")
+            if google_key:
+                try:
+                    genai.configure(api_key=google_key, transport="rest")
+                    model = genai.GenerativeModel("gemini-2.0-flash")
+                    
+                    # Upload audio as inline data
+                    import mimetypes
+                    audio_mime = mime if mime else "audio/webm"
+                    audio_part = {
+                        "inline_data": {
+                            "mime_type": audio_mime,
+                            "data": encoded
+                        }
+                    }
+                    
+                    resp = model.generate_content([
+                        "Transcribe this audio exactly. Output only the spoken words, nothing else. If no speech is detected, output an empty string.",
+                        audio_part
+                    ])
+                    text = resp.text.strip() if resp.text else ""
+                    log.info("Gemini STT result: '%s'", text[:100])
+                except Exception as e2:
+                    log.warning("Gemini STT also failed: %s", e2)
+        
         try: os.remove(tmp_path)
         except: pass
+        
         return jsonify({"text": text})
     except Exception as e:
         log.exception("transcribe failed")
-        return jsonify({"error":"Transcription error"}), 500
+        return jsonify({"error": f"Transcription error: {str(e)}"}), 500
 
 # -------- Cloud Persistence (MongoDB) --------
 import pymongo
