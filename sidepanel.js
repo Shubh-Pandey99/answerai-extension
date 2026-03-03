@@ -154,9 +154,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Try multiple MediaRecorder configurations until one works
       const audioOnlyStream = new MediaStream(audioTracks);
       const configs = [
-        [audioOnlyStream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 32000 }],
-        [audioOnlyStream, { mimeType: 'audio/webm', audioBitsPerSecond: 32000 }],
-        [audioOnlyStream, { audioBitsPerSecond: 32000 }],
+        [audioOnlyStream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 64000 }],
+        [audioOnlyStream, { mimeType: 'audio/webm', audioBitsPerSecond: 64000 }],
+        [audioOnlyStream, { audioBitsPerSecond: 64000 }],
         [audioOnlyStream, {}],
         [mediaStream, { mimeType: 'video/webm;codecs=vp8,opus' }],
         [mediaStream, {}],
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           recorder = new MediaRecorder(stream, opts);
           // Test if it can actually start
-          recorder.start(3000);
+          recorder.start(5000);
           logStatus("Recorder OK: " + recorder.mimeType);
           break;
         } catch (e) {
@@ -193,7 +193,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       mediaRecorder.ondataavailable = async (e) => {
         if (!e.data || e.data.size < 100) return;
-        logStatus("Chunk: " + (e.data.size / 1024).toFixed(1) + "KB");
+        // Show current volume level to confirm audio is flowing
+        const curVol = meterFill ? parseInt(meterFill.style.width) || 0 : -1;
+        logStatus("Chunk: " + (e.data.size / 1024).toFixed(1) + "KB vol:" + curVol + "%");
         const b64 = await blobToDataURL(e.data);
         try {
           const res = await fetch(apiBase + '/api/transcribe', {
@@ -205,8 +207,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             if (data && data.text && data.text.trim()) {
               appendTranscript(data.text);
+              logStatus("[" + (data.method || "?") + "] transcribed");
             } else {
-              logStatus("(silence)");
+              // Show WHY it was silent
+              const dbg = data.debug ? data.debug.substring(0, 60) : "no debug";
+              logStatus("(" + (data.method || "?") + ") " + dbg);
             }
           } else {
             const t = await res.text();

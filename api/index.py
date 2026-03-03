@@ -187,7 +187,7 @@ def transcribe():
         log.info("Received audio chunk: %d bytes, mime=%s", len(buf), mime)
         
         if len(buf) < 100:
-            return jsonify({"text": ""}), 200  # Too small to transcribe
+            return jsonify({"text": "", "method": "skip", "debug": "chunk too small"}), 200
         
         suffix = ".webm" if "webm" in mime else ".ogg" if "ogg" in mime else ".mp3"
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
@@ -195,6 +195,8 @@ def transcribe():
             tmp_path = f.name
 
         text = ""
+        method = "none"
+        debug_info = ""
         
         # Try OpenAI Whisper first
         oai_key = os.getenv("OPENAI_API_KEY")
@@ -204,9 +206,14 @@ def transcribe():
                 with open(tmp_path, "rb") as fp:
                     tr = client.audio.transcriptions.create(model="whisper-1", file=fp)
                 text = getattr(tr, "text", "").strip()
+                method = "whisper"
+                debug_info = f"whisper returned {len(text)} chars"
                 log.info("Whisper result: '%s'", text[:100])
             except Exception as e:
+                debug_info = f"whisper error: {str(e)[:100]}"
                 log.warning("Whisper failed: %s, trying Gemini fallback", e)
+        else:
+            debug_info = "no OPENAI_API_KEY"
         
         # Fallback to Google Gemini for audio transcription
         if not text:
@@ -216,8 +223,6 @@ def transcribe():
                     genai.configure(api_key=google_key, transport="rest")
                     model = genai.GenerativeModel("gemini-2.0-flash")
                     
-                    # Upload audio as inline data
-                    import mimetypes
                     audio_mime = mime if mime else "audio/webm"
                     audio_part = {
                         "inline_data": {
@@ -227,18 +232,26 @@ def transcribe():
                     }
                     
                     resp = model.generate_content([
-                        "Transcribe this audio exactly. Output only the spoken words, nothing else. If no speech is detected, output an empty string.",
+                        "Transcribe this audio exactly. Output ONLY the spoken words, nothing else. If there is music but no speech, output just the word MUSIC. If completely silent, output SILENT.",
                         audio_part
                     ])
-                    text = resp.text.strip() if resp.text else ""
-                    log.info("Gemini STT result: '%s'", text[:100])
+                    raw = resp.text.strip() if resp.text else ""
+                    method = "gemini"
+                    debug_info += f" | gemini returned: '{raw[:80]}'"
+                    # Don't pass through MUSIC/SILENT markers as transcript
+                    if raw and raw not in ("MUSIC", "SILENT", ""):
+                        text = raw
+                    log.info("Gemini STT result: '%s'", raw[:100])
                 except Exception as e2:
+                    debug_info += f" | gemini error: {str(e2)[:80]}"
                     log.warning("Gemini STT also failed: %s", e2)
+            else:
+                debug_info += " | no GOOGLE_API_KEY"
         
         try: os.remove(tmp_path)
         except: pass
         
-        return jsonify({"text": text})
+        return jsonify({"text": text, "method": method, "debug": debug_info})
     except Exception as e:
         log.exception("transcribe failed")
         return jsonify({"error": f"Transcription error: {str(e)}"}), 500
