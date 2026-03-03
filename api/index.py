@@ -230,7 +230,7 @@ def transcribe():
                 prompt = "Transcribe this audio exactly. Output ONLY the spoken words, nothing else. If there is music but no speech, output just the word MUSIC. If completely silent, output SILENT."
                 
                 # Try with retry + model fallback for rate limits
-                models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
+                models_to_try = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "models/gemini-1.5-flash"]
                 for model_name in models_to_try:
                     for attempt in range(3):
                         try:
