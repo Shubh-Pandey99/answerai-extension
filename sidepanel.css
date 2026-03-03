@@ -627,6 +627,95 @@ body {
   display: none !important;
 }
 
+/* ── History View ────────────────────────────────── */
+.hist-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.hist-card {
+  background: white;
+  border: 1px solid #e5e8ec;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.hist-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 12px rgba(88, 166, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.hist-date {
+  font-size: 10px;
+  font-weight: 600;
+  color: #9ca8b5;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 4px;
+}
+
+.hist-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hist-preview {
+  font-size: 12px;
+  color: #6e7681;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hist-empty {
+  text-align: center;
+  padding: 40px 24px;
+  color: #9ca8b5;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.hist-loading {
+  text-align: center;
+  padding: 24px;
+  color: #9ca8b5;
+  font-size: 12px;
+}
+
+/* ── AI thinking state ───────────────────────────── */
+.thinking-text {
+  color: #9ca8b5;
+  font-style: italic;
+  animation: thinking-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes thinking-pulse {
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
 .has-attachment .ask-container {
   border-color: var(--primary);
   background: rgba(88, 166, 255, 0.06);
