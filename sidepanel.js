@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function getApiBase() {
     return new Promise(resolve => {
       chrome.storage.local.get(['vercelUrl'], res => {
-        resolve(res.vercelUrl || 'https://usescribe.vercel.app');
+        resolve(res.vercelUrl || 'https://scribe-extension.vercel.app');
       });
     });
   }
@@ -356,7 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
     aiResponseText.innerHTML = '<span class="thinking-text">Thinking...</span>';
     try {
       const settings = await new Promise(r => chrome.storage.local.get(['vercelUrl', 'model'], r));
-      const url = settings.vercelUrl || 'https://usescribe.vercel.app';
+      const url = settings.vercelUrl || 'https://scribe-extension.vercel.app';
       const res = await fetch(url + '/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -4,7 +4,8 @@
 
 ## What it does
 
-Scribe is a Chrome extension that sits in your browser sidepanel and:
+- **GitHub**: [github.com/Shubh-Pandey99/scribe](https://github.com/Shubh-Pandey99/scribe)
+- **Vercel**: [scribe-extension.vercel.app](https://scribe-extension.vercel.app)
 
 - 🎙️ **Live Transcription** — Captures audio from any browser tab (YouTube, meetings, podcasts) and transcribes it in real-time using OpenAI Whisper or Google Gemini
 - 📷 **Screen Capture** — Takes a screenshot of the active tab and sends it to Gemini for visual analysis
