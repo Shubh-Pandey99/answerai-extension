@@ -215,36 +215,44 @@ def transcribe():
         else:
             debug_info = "no OPENAI_API_KEY"
         
-        # Fallback to Google Gemini for audio transcription
+        # Fallback to Google Gemini for audio transcription (with retry for 429)
         if not text:
             google_key = os.getenv("GOOGLE_API_KEY")
             if google_key:
-                try:
-                    genai.configure(api_key=google_key, transport="rest")
-                    model = genai.GenerativeModel("gemini-2.0-flash")
-                    
-                    audio_mime = mime if mime else "audio/webm"
-                    audio_part = {
-                        "inline_data": {
-                            "mime_type": audio_mime,
-                            "data": encoded
-                        }
+                genai.configure(api_key=google_key, transport="rest")
+                audio_mime = mime if mime else "audio/webm"
+                audio_part = {
+                    "inline_data": {
+                        "mime_type": audio_mime,
+                        "data": encoded
                     }
-                    
-                    resp = model.generate_content([
-                        "Transcribe this audio exactly. Output ONLY the spoken words, nothing else. If there is music but no speech, output just the word MUSIC. If completely silent, output SILENT.",
-                        audio_part
-                    ])
-                    raw = resp.text.strip() if resp.text else ""
-                    method = "gemini"
-                    debug_info += f" | gemini returned: '{raw[:80]}'"
-                    # Don't pass through MUSIC/SILENT markers as transcript
-                    if raw and raw not in ("MUSIC", "SILENT", ""):
-                        text = raw
-                    log.info("Gemini STT result: '%s'", raw[:100])
-                except Exception as e2:
-                    debug_info += f" | gemini error: {str(e2)[:80]}"
-                    log.warning("Gemini STT also failed: %s", e2)
+                }
+                prompt = "Transcribe this audio exactly. Output ONLY the spoken words, nothing else. If there is music but no speech, output just the word MUSIC. If completely silent, output SILENT."
+                
+                # Try with retry + model fallback for rate limits
+                models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
+                for model_name in models_to_try:
+                    for attempt in range(3):
+                        try:
+                            model = genai.GenerativeModel(model_name)
+                            resp = model.generate_content([prompt, audio_part])
+                            raw = resp.text.strip() if resp.text else ""
+                            method = f"gemini({model_name})"
+                            debug_info += f" | {model_name} returned: '{raw[:60]}'"
+                            if raw and raw not in ("MUSIC", "SILENT", ""):
+                                text = raw
+                            log.info("Gemini STT [%s] result: '%s'", model_name, raw[:100])
+                            break
+                        except Exception as e2:
+                            err_str = str(e2)
+                            if "429" in err_str and attempt < 2:
+                                time.sleep(2 * (attempt + 1))  # 2s, 4s backoff
+                                continue
+                            debug_info += f" | {model_name} err: {err_str[:60]}"
+                            log.warning("Gemini STT [%s] attempt %d failed: %s", model_name, attempt, e2)
+                            break
+                    if text:
+                        break
             else:
                 debug_info += " | no GOOGLE_API_KEY"
         
