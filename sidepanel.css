@@ -87,6 +87,8 @@ body {
   border-radius: 12px;
   gap: 2px;
   flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .toggle-item {
@@ -628,4 +630,42 @@ body {
 .has-attachment .ask-container {
   border-color: var(--primary);
   background: rgba(88, 166, 255, 0.06);
+}
+
+/* ── Responsive: narrow sidepanel ────────────────── */
+/* At very small widths (common for sidepanels), collapse header gracefully */
+@media (max-width: 440px) {
+
+  /* Hide the "Synapse AI" wordmark text — keep only the blue dot */
+  .header-left h2 {
+    display: none;
+  }
+
+  /* Drop tab text labels — show icons only */
+  .toggle-item span {
+    display: none;
+  }
+
+  .toggle-item {
+    padding: 6px 10px;
+  }
+
+  .saas-header {
+    gap: 4px;
+    padding: 0 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .ghost-btn {
+    padding: 5px;
+  }
+
+  .mode-toggle {
+    padding: 2px;
+  }
+
+  .toggle-item {
+    padding: 5px 8px;
+  }
 }
