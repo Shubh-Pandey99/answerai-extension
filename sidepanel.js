@@ -30,13 +30,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const sendBtn = document.getElementById('send-btn');
   const dashboardBtn = document.getElementById('dashboard-btn');
 
-  // ====== RECORDING STATE (managed entirely in sidepanel now) ======
+  // ====== STATE ======
   let isRecording = false;
   let aggregatedTranscript = '';
   let activeCaptureData = null;
   let currentMode = 'recording';
-
-  // Audio recording objects (live in sidepanel, NOT offscreen)
   let mediaStream = null;
   let mediaRecorder = null;
   let audioContext = null;
@@ -47,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!statusLog) return;
     const item = document.createElement('div');
     item.className = 'status-item';
-    item.textContent = `● ${text}`;
+    item.textContent = '\u25cf ' + text;
     statusLog.prepend(item);
     if (statusLog.children.length > 6) statusLog.lastElementChild.remove();
   }
@@ -56,13 +54,10 @@ document.addEventListener('DOMContentLoaded', () => {
     currentMode = mode;
     Object.values(views).forEach(v => v.classList.add('hidden'));
     views[mode].classList.remove('hidden');
-
     const isVisionResult = (mode === 'result' && activeCaptureData);
     const isTransResult = (mode === 'result' && !activeCaptureData);
-
     toggleTranscript.classList.toggle('active', mode === 'recording' || isTransResult);
     toggleCapture.classList.toggle('active', mode === 'captured' || isVisionResult);
-
     if (mode === 'recording') {
       processBtnText.textContent = 'Summarize Transcription';
       cardActionBar.classList.remove('hidden');
@@ -72,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       cardActionBar.classList.add('hidden');
     }
-
     if (window.lucide) lucide.createIcons();
     updateInputContext();
   }
@@ -102,35 +96,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ====== CORE: Start/Stop Recording using getDisplayMedia ======
+  async function getApiBase() {
+    return new Promise(resolve => {
+      chrome.storage.local.get(['vercelUrl'], res => {
+        resolve(res.vercelUrl || 'https://spatial-expanse.vercel.app');
+      });
+    });
+  }
+
+  // ====== CORE RECORDING ======
   async function startRecording() {
     try {
       logStatus("Requesting screen share...");
 
-      // Use getDisplayMedia — this is a STANDARD WEB API that works reliably.
-      // Chrome will show a picker. User selects their YouTube tab.
-      // Audio from that tab will be captured.
       mediaStream = await navigator.mediaDevices.getDisplayMedia({
         audio: true,
-        video: true,           // Required by Chrome, but we only use audio
-        preferCurrentTab: true // Hint to pre-select the current tab
+        video: true,
+        preferCurrentTab: true
       });
 
-      // We only care about audio, but we keep the video track alive
-      // (Chrome requires it for tab audio capture via getDisplayMedia)
       const audioTracks = mediaStream.getAudioTracks();
       if (audioTracks.length === 0) {
-        showError("No audio track found. Make sure to check 'Share tab audio' in the picker.");
+        showError("No audio track. Check 'Share tab audio' in the picker.");
         mediaStream.getTracks().forEach(t => t.stop());
         return;
       }
 
-      logStatus("Audio stream acquired!");
+      // Let Chrome finalize the stream before touching it
+      await new Promise(r => setTimeout(r, 300));
+
+      if (audioTracks[0].readyState !== 'live') {
+        showError("Audio track ended before recording could start. Try again.");
+        mediaStream.getTracks().forEach(t => t.stop());
+        return;
+      }
+
+      logStatus("Audio acquired. Setting up...");
       isRecording = true;
       appContainer.classList.add('recording');
       recordBtnText.textContent = "Stop Recording";
 
-      // Setup volume meter
+      // Volume meter
       audioContext = new AudioContext();
       const src = audioContext.createMediaStreamSource(new MediaStream(audioTracks));
       const analyser = audioContext.createAnalyser();
@@ -145,69 +151,81 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       volumeRaf = requestAnimationFrame(volumeTick);
 
-      // Setup MediaRecorder — CRITICAL: use an audio-only stream!
-      // getDisplayMedia returns video+audio, but MediaRecorder with audio mimeType
-      // crashes if video tracks are present. Extract audio tracks only.
+      // Try multiple MediaRecorder configurations until one works
       const audioOnlyStream = new MediaStream(audioTracks);
+      const configs = [
+        [audioOnlyStream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 32000 }],
+        [audioOnlyStream, { mimeType: 'audio/webm', audioBitsPerSecond: 32000 }],
+        [audioOnlyStream, { audioBitsPerSecond: 32000 }],
+        [audioOnlyStream, {}],
+        [mediaStream, { mimeType: 'video/webm;codecs=vp8,opus' }],
+        [mediaStream, {}],
+      ];
 
-      // Find a supported mimeType
-      let mimeType = 'audio/webm;codecs=opus';
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'audio/webm';
+      let recorder = null;
+      for (const [stream, opts] of configs) {
+        try {
+          recorder = new MediaRecorder(stream, opts);
+          // Test if it can actually start
+          recorder.start(3000);
+          logStatus("Recorder OK: " + recorder.mimeType);
+          break;
+        } catch (e) {
+          recorder = null;
+          continue;
+        }
       }
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = ''; // Let browser pick default
+
+      if (!recorder) {
+        showError("No working recorder config found on this device.");
+        stopRecording();
+        return;
       }
 
-      const recorderOptions = mimeType
-        ? { mimeType, audioBitsPerSecond: 32000 }
-        : { audioBitsPerSecond: 32000 };
+      mediaRecorder = recorder;
 
-      mediaRecorder = new MediaRecorder(audioOnlyStream, recorderOptions);
-      logStatus(`Recorder: ${mediaRecorder.mimeType}`);
+      mediaRecorder.onerror = (ev) => {
+        logStatus("Rec err: " + (ev.error?.message || "unknown"));
+      };
 
       const apiBase = await getApiBase();
-      logStatus("Sending audio to " + new URL(apiBase).hostname + "...");
+      logStatus("API: " + new URL(apiBase).hostname);
 
       mediaRecorder.ondataavailable = async (e) => {
-        if (!e.data || e.data.size < 100) return; // Skip tiny/empty chunks
-        logStatus(`Chunk: ${(e.data.size / 1024).toFixed(1)}KB`);
+        if (!e.data || e.data.size < 100) return;
+        logStatus("Chunk: " + (e.data.size / 1024).toFixed(1) + "KB");
         const b64 = await blobToDataURL(e.data);
         try {
-          const res = await fetch(`${apiBase}/api/transcribe`, {
+          const res = await fetch(apiBase + '/api/transcribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ audioBase64: b64, mimeType: e.data.type || 'audio/webm', sessionId })
           });
           if (res.ok) {
             const data = await res.json();
-            if (data?.text && data.text.trim()) {
+            if (data && data.text && data.text.trim()) {
               appendTranscript(data.text);
             } else {
-              logStatus("No speech detected.");
+              logStatus("(silence)");
             }
           } else {
             const t = await res.text();
-            logStatus(`API ${res.status}: ${t.substring(0, 80)}`);
-            console.error('STT Error:', res.status, t);
+            logStatus("API " + res.status + ": " + t.substring(0, 60));
           }
         } catch (err) {
-          logStatus("Network: " + err.message);
-          console.error('STT fetch error:', err);
+          logStatus("Net: " + err.message);
         }
       };
 
-      mediaRecorder.start(3000); // 3-second chunks
-      logStatus("Recording started. Listening...");
+      logStatus("Recording started!");
 
-      // Handle stream ending (user clicks "Stop sharing" in Chrome's bar)
-      mediaStream.getVideoTracks()[0]?.addEventListener('ended', () => {
-        stopRecording();
-      });
+      // Auto-stop when user clicks Chrome's "Stop sharing" bar
+      mediaStream.getVideoTracks()[0]?.addEventListener('ended', () => stopRecording());
+      mediaStream.getAudioTracks()[0]?.addEventListener('ended', () => stopRecording());
 
     } catch (err) {
       if (err.name === 'NotAllowedError') {
-        logStatus("Screen share cancelled by user.");
+        logStatus("Share cancelled.");
       } else {
         showError("Recording failed: " + err.message);
         logStatus("Error: " + err.message);
@@ -220,12 +238,10 @@ document.addEventListener('DOMContentLoaded', () => {
     try { mediaStream?.getTracks().forEach(t => t.stop()); } catch { }
     try { if (volumeRaf) cancelAnimationFrame(volumeRaf); } catch { }
     try { audioContext?.close(); } catch { }
-
     mediaRecorder = null;
     mediaStream = null;
     audioContext = null;
     volumeRaf = null;
-
     isRecording = false;
     appContainer.classList.remove('recording');
     recordBtnText.textContent = "Start Recording";
@@ -239,24 +255,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const textNode = document.createTextNode(chunk);
     transcriptEl.appendChild(textNode);
     transcriptEl.scrollTop = transcriptEl.scrollHeight;
-    logStatus("Text received.");
+    logStatus("Text received!");
   }
 
-  async function getApiBase() {
-    return new Promise(resolve => {
-      chrome.storage.local.get(['vercelUrl'], res => {
-        resolve(res.vercelUrl || 'https://spatial-expanse.vercel.app');
-      });
-    });
-  }
-
-  // ====== UI Event Handlers ======
+  // ====== UI HANDLERS ======
   recordBtn.onclick = () => {
-    if (!isRecording) {
-      startRecording();
-    } else {
-      stopRecording();
-    }
+    if (!isRecording) startRecording();
+    else stopRecording();
   };
 
   async function captureScreen() {
@@ -281,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!extra.imageBase64) activeCaptureData = null;
     setMode('result');
     aiResponseText.innerHTML = '<span style="color:#8b949e">Thinking...</span>';
-
     try {
       const settings = await new Promise(r => chrome.storage.local.get(['vercelUrl', 'model'], r));
       const url = settings.vercelUrl || 'https://spatial-expanse.vercel.app';
@@ -291,14 +295,12 @@ document.addEventListener('DOMContentLoaded', () => {
         transcript: prompt,
         ...extra
       };
-
-      const res = await fetch(`${url}/api/answer`, {
+      const res = await fetch(url + '/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-
       if (data.answer) {
         aiResponseText.innerHTML = data.answer
           .replace(/\n\n/g, '<br><br>')
@@ -308,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
         aiResponseText.textContent = data.error || 'No response from AI.';
       }
     } catch (e) {
-      showError(`API Error: ${e.message}`);
+      showError('API Error: ' + e.message);
       aiResponseText.textContent = 'Error processing request.';
     }
   }
@@ -316,9 +318,9 @@ document.addEventListener('DOMContentLoaded', () => {
   processBtn.onclick = () => {
     if (currentMode === 'recording') {
       const text = transcriptEl.innerText || aggregatedTranscript;
-      runAIAction(`Summarize this meeting transcript concisely:\n${text}`);
+      runAIAction('Summarize this meeting transcript concisely:\n' + text);
     } else if (currentMode === 'captured') {
-      runAIAction(`Analyze this screen context and explain what is shown.`, { imageBase64: activeCaptureData });
+      runAIAction('Analyze this screen context and explain what is shown.', { imageBase64: activeCaptureData });
     }
   };
 
@@ -340,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
   askInput.onkeypress = (e) => { if (e.key === 'Enter') sendBtn.click(); };
   dashboardBtn.onclick = () => { chrome.tabs.create({ url: 'https://spatial-expanse.vercel.app/dashboard' }); };
 
-  // --- Message Bus (still listens for background messages) ---
+  // --- Background messages ---
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'error') { showError(msg.message); logStatus("Error: " + msg.message); }
     if (msg.type === 'trigger-capture') captureScreen();
@@ -348,17 +350,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   logStatus("System ready.");
 
-  // Load Settings
+  // Settings
   const modelSelect = document.getElementById('model-select');
   const urlInput = document.getElementById('vercel-url-input');
-
   document.getElementById('save-settings').onclick = () => {
-    chrome.storage.local.set({
-      model: modelSelect.value,
-      vercelUrl: urlInput.value
-    }, () => alert('Settings saved!'));
+    chrome.storage.local.set({ model: modelSelect.value, vercelUrl: urlInput.value }, () => alert('Settings saved!'));
   };
-
   chrome.storage.local.get(['model', 'vercelUrl'], (res) => {
     if (res.model) modelSelect.value = res.model;
     if (res.vercelUrl) urlInput.value = res.vercelUrl;
