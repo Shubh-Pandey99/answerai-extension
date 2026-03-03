@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Synapse AI",
-  "version": "2.0.0",
-  "description": "Live transcription, screenshot understanding, and real-time Q&A with OpenAI/Gemini.",
+  "name": "Scribe",
+  "version": "2.1.0",
+  "description": "AI-powered live transcription, screen capture analysis, and real-time Q&A — right in your browser sidepanel.",
   "background": {
     "service_worker": "background-enhanced.js"
   },
@@ -26,7 +26,7 @@
   },
   "action": {
     "default_icon": "icon.png",
-    "default_title": "Open AI Assistant Panel"
+    "default_title": "Open Scribe"
   },
   "side_panel": {
     "default_path": "sidepanel.html"

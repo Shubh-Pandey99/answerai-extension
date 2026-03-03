@@ -725,7 +725,7 @@ body {
 /* At very small widths (common for sidepanels), collapse header gracefully */
 @media (max-width: 440px) {
 
-  /* Hide the "Synapse AI" wordmark text — keep only the blue dot */
+  /* Hide the "Scribe" wordmark text — keep only the blue dot */
   .header-left h2 {
     display: none;
   }

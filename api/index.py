@@ -16,7 +16,7 @@ import google.generativeai as genai
 load_dotenv()
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-log = logging.getLogger("answerai-api")
+log = logging.getLogger("scribe-api")
 
 def retry_with_backoff(max_retries=3, base_delay=1):
     def deco(fn):
@@ -275,7 +275,7 @@ sessions_col = None
 if MONGO_URI:
     try:
         db_client = pymongo.MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-        db = db_client.get_database("answerai")
+        db = db_client.get_database("scribe")
         sessions_col = db.get_collection("sessions")
         log.info("Connected to MongoDB Atlas")
     except Exception as e:
