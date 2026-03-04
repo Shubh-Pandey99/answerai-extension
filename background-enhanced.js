@@ -1,7 +1,4 @@
-// Background service worker - handles extension lifecycle only
-// Audio capture is now handled directly in sidepanel.js via getDisplayMedia
-
-const OFFSCREEN_URL = 'offscreen.html';
+// Background service worker - handles extension lifecycle\n// Audio capture is handled in sidepanel.js via getDisplayMedia
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({

@@ -12,8 +12,6 @@
     "activeTab",
     "scripting",
     "tabCapture",
-    "offscreen",
-    "notifications",
     "contextMenus",
     "sidePanel"
   ],
