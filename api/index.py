@@ -81,7 +81,16 @@ class GoogleProvider(BaseProvider):
         log.info("Initializing GoogleProvider with model: %s", self.model_name)
         self.model = genai.GenerativeModel(
             self.model_name,
-            system_instruction="You are a concise, expert assistant. Give short, direct answers. For code questions, output ONLY the code with minimal explanation. No lengthy prose unless the user explicitly asks for a detailed explanation."
+            system_instruction=(
+                "You are Scribe, a smart AI assistant embedded in a browser sidepanel. "
+                "Read the user's intent carefully and respond appropriately:\n"
+                "- If they ask for code, give working code directly without lengthy explanations.\n"
+                "- If they ask to explain something, explain clearly.\n"
+                "- If they ask to summarize, give concise bullet points.\n"
+                "- If given a screenshot/image, analyze what's visible and answer the user's question about it.\n"
+                "- If given a meeting transcript, extract key points, action items, and decisions.\n"
+                "- Match the depth and format to what the user actually asked for. Don't over-explain simple requests."
+            )
         )
 
     def _pil_from_base64(self, data_uri:str):
