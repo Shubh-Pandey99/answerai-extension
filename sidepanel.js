@@ -219,17 +219,24 @@ document.addEventListener('DOMContentLoaded', () => {
       const apiBase = await getApiBase();
       logStatus("API: " + new URL(apiBase).hostname);
 
+      let transcribePending = false;
       mediaRecorder.ondataavailable = async (e) => {
         if (!e.data || e.data.size < 100) return;
+        if (transcribePending) { logStatus("⏳ waiting for previous chunk..."); return; }
         const curVol = meterFill ? parseInt(meterFill.style.width) || 0 : -1;
         logStatus("Chunk: " + (e.data.size / 1024).toFixed(1) + "KB vol:" + curVol + "%");
         const b64 = await blobToDataURL(e.data);
+        transcribePending = true;
         try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 15000);
           const res = await fetch(apiBase + '/api/transcribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ audioBase64: b64, mimeType: e.data.type || 'audio/webm', sessionId })
+            body: JSON.stringify({ audioBase64: b64, mimeType: e.data.type || 'audio/webm', sessionId }),
+            signal: controller.signal
           });
+          clearTimeout(timeout);
           if (res.ok) {
             const data = await res.json();
             if (data && data.text && data.text.trim() && data.text.trim().length > 1 && !['SILENT','MUSIC','.'].includes(data.text.trim())) {
@@ -244,7 +251,10 @@ document.addEventListener('DOMContentLoaded', () => {
             logStatus("API " + res.status + ": " + t.substring(0, 50));
           }
         } catch (err) {
-          logStatus("Net: " + err.message);
+          if (err.name === 'AbortError') logStatus("⏱ chunk timed out, skipping");
+          else logStatus("Net: " + err.message);
+        } finally {
+          transcribePending = false;
         }
       };
 
