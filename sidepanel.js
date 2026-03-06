@@ -232,12 +232,12 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           if (res.ok) {
             const data = await res.json();
-            if (data && data.text && data.text.trim()) {
+            if (data && data.text && data.text.trim() && data.text.trim().length > 1 && !['SILENT','MUSIC','.'].includes(data.text.trim())) {
               appendTranscript(data.text);
               logStatus("[" + (data.method || "?") + "] transcribed");
             } else {
-              const dbg = data.debug ? data.debug.substring(0, 55) : "no speech";
-              logStatus("(" + (data.method || "?") + ") " + dbg);
+              const method = data.method || "skip";
+              logStatus("● " + method + ": no speech detected");
             }
           } else {
             const t = await res.text();
