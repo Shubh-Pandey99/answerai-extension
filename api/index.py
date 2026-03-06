@@ -42,8 +42,10 @@ class OpenAIProvider(BaseProvider):
     def __init__(self):
         key = os.getenv("OPENAI_API_KEY")
         if not key: raise ValueError("OPENAI_API_KEY not configured")
-        self.client = OpenAI(api_key=key)
+        base_url = os.getenv("OPENAI_BASE_URL")  # LiteLLM proxy support
+        self.client = OpenAI(api_key=key, base_url=base_url) if base_url else OpenAI(api_key=key)
         self.model = os.getenv("OPENAI_MODEL", "gpt-4o")
+        log.info("OpenAI provider init: model=%s base_url=%s", self.model, base_url or "default")
 
     @retry_with_backoff()
     def get_response(self, transcript=None, image_url=None, image_base64=None):
@@ -250,11 +252,12 @@ def transcribe():
         method = "none"
         debug_info = ""
         
-        # Try OpenAI Whisper first
+        # Try OpenAI Whisper first (supports LiteLLM proxy via OPENAI_BASE_URL)
         oai_key = os.getenv("OPENAI_API_KEY")
+        oai_base = os.getenv("OPENAI_BASE_URL")
         if oai_key:
             try:
-                client = OpenAI(api_key=oai_key)
+                client = OpenAI(api_key=oai_key, base_url=oai_base) if oai_base else OpenAI(api_key=oai_key)
                 with open(tmp_path, "rb") as fp:
                     tr = client.audio.transcriptions.create(model="whisper-1", file=fp)
                 text = getattr(tr, "text", "").strip()
