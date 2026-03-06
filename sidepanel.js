@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
       for (const [stream, opts] of configs) {
         try {
           recorder = new MediaRecorder(stream, opts);
-          recorder.start(5000);
+          recorder.start(3000); // Emits a chunk every 3 seconds for better live feel
           logStatus("Recorder: " + recorder.mimeType);
           break;
         } catch { recorder = null; }
@@ -269,7 +269,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function stopRecording() {
-    try { mediaRecorder?.stop(); } catch { }
+    try { 
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.requestData(); // Get the last bit of audio
+        mediaRecorder.stop(); 
+      }
+    } catch { }
     try { mediaStream?.getTracks().forEach(t => t.stop()); } catch { }
     try { if (volumeRaf) cancelAnimationFrame(volumeRaf); } catch { }
     try { audioContext?.close(); } catch { }
