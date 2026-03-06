@@ -77,9 +77,12 @@ class GoogleProvider(BaseProvider):
         key = os.getenv("GOOGLE_API_KEY")
         if not key: raise ValueError("GOOGLE_API_KEY not configured")
         genai.configure(api_key=key, transport="rest")
-        self.model_name = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash")
+        self.model_name = os.getenv("GOOGLE_MODEL", "gemini-2.5-flash")
         log.info("Initializing GoogleProvider with model: %s", self.model_name)
-        self.model = genai.GenerativeModel(self.model_name)
+        self.model = genai.GenerativeModel(
+            self.model_name,
+            system_instruction="You are a concise, expert assistant. Give short, direct answers. For code questions, output ONLY the code with minimal explanation. No lengthy prose unless the user explicitly asks for a detailed explanation."
+        )
 
     def _pil_from_base64(self, data_uri:str):
         header, encoded = data_uri.split(",",1)
@@ -250,38 +253,38 @@ def transcribe():
         method = "none"
         debug_info = ""
         
-        # Try OpenAI Whisper first
-        oai_key = os.getenv("OPENAI_API_KEY")
-        if oai_key:
+        # PRIMARY: Groq Whisper (free, fast, reliable)
+        groq_key = os.getenv("GROQ_API_KEY")
+        if groq_key:
             try:
-                client = OpenAI(api_key=oai_key)
+                groq_client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
                 with open(tmp_path, "rb") as fp:
-                    tr = client.audio.transcriptions.create(model="whisper-1", file=fp)
+                    tr = groq_client.audio.transcriptions.create(model="whisper-large-v3-turbo", file=fp)
                 text = getattr(tr, "text", "").strip()
-                method = "whisper"
-                debug_info = f"whisper returned {len(text)} chars"
-                log.info("Whisper result: '%s'", text[:100])
+                method = "groq-whisper"
+                debug_info = f"groq returned {len(text)} chars"
+                log.info("Groq Whisper result: '%s'", text[:100])
             except Exception as e:
-                debug_info = f"whisper error: {str(e)[:100]}"
-                log.warning("Whisper failed: %s, trying Groq fallback", e)
+                debug_info = f"groq error: {str(e)[:100]}"
+                log.warning("Groq failed: %s, trying OpenAI fallback", e)
         else:
-            debug_info = "no OPENAI_API_KEY"
+            debug_info = "no GROQ_API_KEY"
         
-        # Fallback 1: Groq Whisper (free tier, OpenAI-compatible)
+        # Fallback 1: OpenAI Whisper
         if not text:
-            groq_key = os.getenv("GROQ_API_KEY")
-            if groq_key:
+            oai_key = os.getenv("OPENAI_API_KEY")
+            if oai_key:
                 try:
-                    groq_client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
+                    client = OpenAI(api_key=oai_key)
                     with open(tmp_path, "rb") as fp:
-                        tr = groq_client.audio.transcriptions.create(model="whisper-large-v3-turbo", file=fp)
+                        tr = client.audio.transcriptions.create(model="whisper-1", file=fp)
                     text = getattr(tr, "text", "").strip()
-                    method = "groq-whisper"
-                    debug_info += f" | groq returned {len(text)} chars"
-                    log.info("Groq Whisper result: '%s'", text[:100])
+                    method = "whisper"
+                    debug_info += f" | whisper returned {len(text)} chars"
+                    log.info("Whisper result: '%s'", text[:100])
                 except Exception as e:
-                    debug_info += f" | groq error: {str(e)[:100]}"
-                    log.warning("Groq Whisper failed: %s, trying Gemini fallback", e)
+                    debug_info += f" | whisper error: {str(e)[:100]}"
+                    log.warning("Whisper failed: %s, trying Gemini fallback", e)
         
         # Fallback 2: Google Gemini for audio transcription (with retry for 429)
         if not text:

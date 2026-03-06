@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(url + '/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: 'google', model: settings.model || 'gemini-2.0-flash', transcript: prompt, ...extra })
+        body: JSON.stringify({ provider: 'google', model: settings.model || 'gemini-2.5-flash', transcript: prompt, ...extra })
       });
       const data = await res.json();
       if (data.answer) {
