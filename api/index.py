@@ -263,11 +263,27 @@ def transcribe():
                 log.info("Whisper result: '%s'", text[:100])
             except Exception as e:
                 debug_info = f"whisper error: {str(e)[:100]}"
-                log.warning("Whisper failed: %s, trying Gemini fallback", e)
+                log.warning("Whisper failed: %s, trying Groq fallback", e)
         else:
             debug_info = "no OPENAI_API_KEY"
         
-        # Fallback to Google Gemini for audio transcription (with retry for 429)
+        # Fallback 1: Groq Whisper (free tier, OpenAI-compatible)
+        if not text:
+            groq_key = os.getenv("GROQ_API_KEY")
+            if groq_key:
+                try:
+                    groq_client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
+                    with open(tmp_path, "rb") as fp:
+                        tr = groq_client.audio.transcriptions.create(model="whisper-large-v3-turbo", file=fp)
+                    text = getattr(tr, "text", "").strip()
+                    method = "groq-whisper"
+                    debug_info += f" | groq returned {len(text)} chars"
+                    log.info("Groq Whisper result: '%s'", text[:100])
+                except Exception as e:
+                    debug_info += f" | groq error: {str(e)[:100]}"
+                    log.warning("Groq Whisper failed: %s, trying Gemini fallback", e)
+        
+        # Fallback 2: Google Gemini for audio transcription (with retry for 429)
         if not text:
             google_key = os.getenv("GOOGLE_API_KEY")
             if google_key:
