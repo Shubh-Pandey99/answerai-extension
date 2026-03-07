@@ -153,15 +153,23 @@ CORS(app, resources={r"/*":{"origins":["chrome-extension://*","http://localhost:
 
 import mimetypes
 from flask import send_file
-import psycopg2
-from psycopg2.extras import RealDictCursor
+
+db_error = None
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except Exception as e:
+    db_error = f"Import error: {e}"
 
 def get_db_connection():
+    if db_error: return None
     db_url = os.environ.get("POSTGRES_URL")
     if not db_url: return None
     try:
         return psycopg2.connect(db_url)
-    except:
+    except Exception as e:
+        global db_error
+        db_error = f"Connect error: {e}"
         return None
 
 # Initialize table
@@ -237,13 +245,13 @@ def root():
 """, 200, {"Content-Type": "text/html"}
 
 @app.get("/health")
-def health(): return jsonify({"status":"ok"}), 200
+def health(): return jsonify({"status":"ok", "db_error": db_error}), 200
 
 # -------- Sessions API (Postgres) --------
 @app.get("/api/sessions")
 def get_sessions():
     conn = get_db_connection()
-    if not conn: return jsonify({"error": "No database attached"}), 503
+    if not conn: return jsonify({"error": f"No database attached. {db_error}"}), 503
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM scribe_sessions ORDER BY created_at DESC LIMIT 50")
