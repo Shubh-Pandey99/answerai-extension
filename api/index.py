@@ -228,39 +228,69 @@ def root():
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Scribe API</title>
-  <link rel="icon" type="image/png" href="/favicon.png">
+  <title>Scribe | The Ultimate AI Interview Co-Pilot</title>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;background:#0d1117;color:#f0f6fc;min-height:100vh;display:flex;align-items:center;justify-content:center;}
-    .card{text-align:center;padding:48px 40px;max-width:480px;}
-    .icon{width:80px;height:80px;border-radius:20px;margin:0 auto 24px;display:block;box-shadow:0 0 40px rgba(88,166,255,0.35);}
-    h1{font-size:28px;font-weight:700;letter-spacing:-0.5px;margin-bottom:8px;}
-    .badge{display:inline-block;background:rgba(63,185,80,0.15);color:#3fb950;border:1px solid rgba(63,185,80,0.3);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;margin-bottom:24px;}
-    p{color:#8b949e;font-size:14px;line-height:1.7;margin-bottom:32px;}
-    .endpoints{background:#161b22;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;text-align:left;}
-    .endpoint{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;}
-    .endpoint:last-child{border-bottom:none;}
-    .method{background:rgba(88,166,255,0.15);color:#58a6ff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;font-family:monospace;flex-shrink:0;}
-    .path{color:#e6edf3;font-family:monospace;font-size:12px;}
-    .desc{color:#8b949e;font-size:11px;margin-left:auto;}
+    :root { --primary: #3b82f6; --bg-dark: #0f172a; --bg-card: #1e293b; --text-light: #f8fafc; --text-muted: #94a3b8; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-light); line-height: 1.6; min-height: 100vh; overflow-x: hidden; }
+    .hero { text-align: center; padding: 100px 20px 60px; max-width: 900px; margin: 0 auto; }
+    .badge { display: inline-flex; align-items: center; background: rgba(59, 130, 246, 0.15); color: #60a5fa; padding: 6px 16px; border-radius: 9999px; font-weight: 600; font-size: 14px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge span { display: inline-block; width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; margin-right: 8px; box-shadow: 0 0 10px #3b82f6; animation: pulse 2s infinite; }
+    h1 { font-size: clamp(3rem, 6vw, 4.5rem); font-weight: 800; letter-spacing: -0.04em; margin-bottom: 24px; line-height: 1.1; background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { font-size: clamp(1.1rem, 2vw, 1.4rem); color: var(--text-muted); margin-bottom: 48px; max-width: 650px; margin-left: auto; margin-right: auto; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; background: var(--primary); color: white; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px; text-decoration: none; transition: all 0.2s; box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4); border: 1px solid rgba(255,255,255,0.1); }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 15px 35px -5px rgba(59, 130, 246, 0.5); }
+    .btn-secondary { background: rgba(255, 255, 255, 0.05); color: white; box-shadow: none; }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); box-shadow: none; }
+    .actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 80px; }
+    
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 1100px; margin: 0 auto; padding: 0 20px 100px; }
+    .feature-card { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); padding: 32px; border-radius: 20px; transition: transform 0.2s, border-color 0.2s; }
+    .feature-card:hover { transform: translateY(-5px); border-color: rgba(59, 130, 246, 0.3); }
+    .feature-icon { font-size: 32px; margin-bottom: 20px; display: inline-block; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; }
+    .feature-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; color: #f1f5f9; }
+    .feature-desc { color: var(--text-muted); line-height: 1.6; font-size: 15px; }
+
+    @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
   </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="card">
-    <div style="font-size: 48px; margin-bottom: 16px;">🎙️</div>
-    <h1>Scribe API</h1>
-    <div class="badge">● API Running</div>
-    <p>AI-powered live transcription, screen capture analysis,<br>and real-time Q&amp;A for the Scribe Chrome extension.</p>
-    <div class="endpoints">
-      <div class="endpoint"><span class="method">POST</span><span class="path">/api/transcribe</span><span class="desc">Audio → text</span></div>
-      <div class="endpoint"><span class="method">POST</span><span class="path">/api/answer</span><span class="desc">AI Q&amp;A</span></div>
-      <div class="endpoint"><span class="method">GET</span><span class="path">/health</span><span class="desc">Health check</span></div>
+  <div class="hero">
+    <div class="badge"><span></span> Scribe Intelligence API Active</div>
+    <h1>The Ultimate Undercover<br>Interview Co-Pilot.</h1>
+    <p class="subtitle">A stealth Chrome Extension that listens to your microphone, captures your screen, and uses AI to instantly solve LeetCode algorithms, handle behavioral questions, and pull up contextual knowledge in real-time.</p>
+    <div class="actions">
+      <a href="https://github.com/Shubh-Pandey99/scribe" target="_blank" class="btn">
+        <svg fill="currentColor" width="20" height="20" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        View Source Code
+      </a>
+      <a href="https://portfolio-shubh-pandey99s-projects.vercel.app/" class="btn btn-secondary">
+        Return to Portfolio
+      </a>
+    </div>
+  </div>
+
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">👁️</div>
+      <div class="feature-title">Stealth Mode UI</div>
+      <div class="feature-desc">Engineered for high-pressure environments. Instantly blur transcripts, hide interface elements, and make the app look like a system panel. Reads only via precise mouse hover.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">Lightning Multimodal AI</div>
+      <div class="feature-desc">Stitches continuous microphone audio streams with `Ctrl+V` visual screenshots to feed a contextually aware Gemini Flash + Groq Whisper brain that responds in under 3 seconds.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💻</div>
+      <div class="feature-title">O(1) Interview Hacking</div>
+      <div class="feature-desc">Strict system prompts force the AI to instantly drop fluff and prioritize raw Big-O optimal code snips and behavioral bullet points you can read instantly.</div>
     </div>
   </div>
 </body>
 </html>
-""", 200, {"Content-Type": "text/html"}
+    """, 200, {"Content-Type": "text/html"}
 
 @app.get("/health")
 def health(): return jsonify({"status":"ok", "db_error": db_error}), 200
