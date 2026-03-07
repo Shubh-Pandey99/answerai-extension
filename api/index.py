@@ -253,7 +253,7 @@ def transcribe():
         if len(buf) < 100:
             return jsonify({"text": "", "method": "skip", "debug": "chunk too small"}), 200
         
-        suffix = ".webm" if "webm" in mime else ".ogg" if "ogg" in mime else ".mp3"
+        suffix = ".webm" if "webm" in mime else ".ogg" if "ogg" in mime else ".wav" if "wav" in mime else ".mp4" if "mp4" in mime else ".webm"
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
             f.write(buf)
             tmp_path = f.name
@@ -274,8 +274,14 @@ def transcribe():
                 debug_info = f"groq returned {len(text)} chars"
                 log.info("Groq Whisper result: '%s'", text[:100])
             except Exception as e:
-                debug_info = f"groq error: {str(e)[:100]}"
-                log.warning("Groq failed: %s, trying OpenAI fallback", e)
+                err_str = str(e)
+                debug_info = f"groq error: {err_str[:100]}"
+                # If rate limited, set method so frontend shows what happened
+                if "429" in err_str or "rate" in err_str.lower():
+                    method = "groq-ratelimit"
+                    log.warning("Groq rate limited, trying fallbacks")
+                else:
+                    log.warning("Groq failed: %s, trying OpenAI fallback", e)
         else:
             debug_info = "no GROQ_API_KEY"
         

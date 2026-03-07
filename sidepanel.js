@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
       for (const [stream, opts] of configs) {
         try {
           recorder = new MediaRecorder(stream, opts);
-          recorder.start(3000); // Emits a chunk every 3 seconds for better live feel
+          recorder.start(5000); // 5s chunks - fits Groq free tier rate limit (20 req/min)
           logStatus("Recorder: " + recorder.mimeType);
           break;
         } catch { recorder = null; }
