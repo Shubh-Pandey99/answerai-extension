@@ -389,62 +389,63 @@ document.addEventListener('DOMContentLoaded', () => {
   async function showHistory() {
     setModeRaw('history');
     const histList = document.getElementById('hist-list');
-    histList.innerHTML = '<div class="hist-loading">Loading...</div>';
+    histList.innerHTML = '<div class="hist-loading">Loading... Cloud History</div>';
 
-    chrome.storage.local.get(['session_index'], async (r) => {
-      let idx = r.session_index || [];
-      if (idx.length === 0) {
+    try {
+      const apiBase = await getApiBase();
+      const res = await fetch(apiBase + '/api/sessions');
+      if (!res.ok) throw new Error("Failed to load");
+      const sessions = await res.json();
+      
+      if (!sessions || sessions.length === 0) {
         histList.innerHTML = '<div class="hist-empty">No sessions yet.<br>Start recording to create your first one.</div>';
         return;
       }
-      const keys = idx.map(id => 'session_' + id);
-      chrome.storage.local.get(keys, (sessions) => {
-        histList.innerHTML = '';
-        
-        // Add a "Clear All" button maybe? Left out for simplicity, individual per-card delete below
-        
-        idx.forEach(id => {
-          const s = sessions['session_' + id];
-          if (!s) return;
-          const card = document.createElement('div');
-          card.className = 'hist-card';
-          
-          const date = s.started_at ? new Date(s.started_at).toLocaleDateString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Unknown';
-          
-          card.innerHTML = `
-            <div class="hist-header-row">
-              <div class="hist-date">${date}</div>
-              <button class="hist-delete-btn" title="Delete session"><i data-lucide="trash-2"></i></button>
-            </div>
-            <div class="hist-title">${s.title || 'Untitled session'}</div>
-            <div class="hist-preview">${(s.transcript || '').substring(0, 80)}...</div>
-          `;
-          
-          // Delete button logic
-          const deleteBtn = card.querySelector('.hist-delete-btn');
-          deleteBtn.onclick = (e) => {
-            e.stopPropagation(); // Prevent opening the session
-            // Remove from array
-            idx = idx.filter(i => i !== id);
-            chrome.storage.local.set({ session_index: idx });
-            chrome.storage.local.remove('session_' + id);
-            // Refresh view
-            showHistory();
-          };
 
-          // Open session logic
-          card.onclick = () => {
-            aggregatedTranscript = s.transcript || '';
-            transcriptEl.textContent = aggregatedTranscript;
-            setMode('recording');
-          };
-          
-          histList.appendChild(card);
-        });
+      histList.innerHTML = '';
+      
+      sessions.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'hist-card';
         
-        if (window.lucide) lucide.createIcons();
+        const date = s.started_at ? new Date(s.started_at).toLocaleDateString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Unknown';
+        
+        card.innerHTML = `
+          <div class="hist-header-row">
+            <div class="hist-date">${date}</div>
+            <button class="hist-delete-btn" title="Delete session"><i data-lucide="trash-2"></i></button>
+          </div>
+          <div class="hist-title">${s.title || 'Untitled session'}</div>
+          <div class="hist-preview">${(s.transcript || '').substring(0, 80)}...</div>
+        `;
+        
+        // Delete button logic (Cloud)
+        const deleteBtn = card.querySelector('.hist-delete-btn');
+        deleteBtn.onclick = async (e) => {
+          e.stopPropagation(); // Prevent opening the session
+          try {
+            await fetch(apiBase + '/api/sessions/' + s.id, { method: 'DELETE' });
+            showHistory(); // Refresh view
+          } catch(err) {
+            showError("Failed to delete session.");
+          }
+        };
+
+        // Open session logic
+        card.onclick = () => {
+          aggregatedTranscript = s.transcript || '';
+          transcriptEl.textContent = aggregatedTranscript;
+          setMode('recording');
+        };
+        
+        histList.appendChild(card);
       });
-    });
+      
+      if (window.lucide) lucide.createIcons();
+
+    } catch (err) {
+      histList.innerHTML = '<div class="hist-empty" style="color:#f85149">Could not connect to Cloud Database.</div>';
+    }
   }
 
   // Raw mode set without toggling action bar logic for history

@@ -153,6 +153,34 @@ CORS(app, resources={r"/*":{"origins":["chrome-extension://*","http://localhost:
 
 import mimetypes
 from flask import send_file
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+def get_db_connection():
+    db_url = os.environ.get("POSTGRES_URL")
+    if not db_url: return None
+    try:
+        return psycopg2.connect(db_url)
+    except:
+        return None
+
+# Initialize table
+try:
+    conn = get_db_connection()
+    if conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS scribe_sessions (
+                    id VARCHAR(255) PRIMARY KEY,
+                    title VARCHAR(255),
+                    transcript TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        conn.commit()
+        conn.close()
+except:
+    pass
 
 @app.get("/favicon.ico")
 @app.get("/favicon.png")
@@ -210,6 +238,66 @@ def root():
 
 @app.get("/health")
 def health(): return jsonify({"status":"ok"}), 200
+
+# -------- Sessions API (Postgres) --------
+@app.get("/api/sessions")
+def get_sessions():
+    conn = get_db_connection()
+    if not conn: return jsonify({"error": "No database attached"}), 503
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM scribe_sessions ORDER BY created_at DESC LIMIT 50")
+            rows = cur.fetchall()
+        # Convert datetime to string
+        for r in rows:
+            if r.get('created_at'): r['started_at'] = r['created_at'].isoformat()
+        return jsonify(rows), 200
+    except Exception as e:
+        log.exception("get sessions failed")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+@app.post("/api/sessions")
+def save_session():
+    data = request.get_json(force=True) or {}
+    sid = data.get("id")
+    title = data.get("title", "Untitled session")
+    transcript = data.get("transcript", "")
+    if not sid: return jsonify({"error": "Missing id"}), 400
+    
+    conn = get_db_connection()
+    if not conn: return jsonify({"error": "No database attached"}), 503
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO scribe_sessions (id, title, transcript) 
+                VALUES (%s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET 
+                  title = EXCLUDED.title, 
+                  transcript = EXCLUDED.transcript
+            """, (sid, title, transcript))
+        conn.commit()
+        return jsonify({"status": "saved", "id": sid}), 200
+    except Exception as e:
+        log.exception("save session failed")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+@app.delete("/api/sessions/<session_id>")
+def delete_session(session_id):
+    conn = get_db_connection()
+    if not conn: return jsonify({"error": "No database attached"}), 503
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM scribe_sessions WHERE id = %s", (session_id,))
+        conn.commit()
+        return jsonify({"status": "deleted"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
 
 @app.post("/api/answer")
 def answer():
