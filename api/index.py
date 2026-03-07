@@ -33,7 +33,7 @@ def retry_with_backoff(max_retries=3, base_delay=1):
 # ---------- Providers ----------
 class BaseProvider(ABC):
     @abstractmethod
-    def get_response(self, transcript=None, image_url=None, image_base64=None): ...
+    def get_response(self, transcript=None, image_url=None, image_base64=None, image_array=None): ...
 
     @abstractmethod
     def stream_response(self, transcript): ...
@@ -108,10 +108,14 @@ class GoogleProvider(BaseProvider):
         except UnidentifiedImageError: raise ValueError("Failed to decode image")
 
     @retry_with_backoff()
-    def get_response(self, transcript=None, image_url=None, image_base64=None):
+    def get_response(self, transcript=None, image_url=None, image_base64=None, image_array=None):
         parts = []
         if transcript: parts.append(transcript)
-        if image_base64: parts.append(self._pil_from_base64(image_base64))
+        
+        if image_array:
+            for b64 in image_array:
+                parts.append(self._pil_from_base64(b64))
+        elif image_base64: parts.append(self._pil_from_base64(image_base64))
         elif image_url:  parts.append(self._pil_from_url(image_url))
         if not parts: return {"error":"No input provided"}
         
@@ -334,9 +338,10 @@ def answer():
         transcript = data.get("transcript")
         image_url = data.get("imageUrl")
         image_base64 = data.get("imageBase64")
+        image_array = data.get("imageArray")
 
         provider = get_provider(provider_name)
-        result = provider.get_response(transcript=transcript, image_url=image_url, image_base64=image_base64)
+        result = provider.get_response(transcript=transcript, image_url=image_url, image_base64=image_base64, image_array=image_array)
         if "error" in result: return jsonify(result), 400
         return jsonify(result), 200
     except ValueError as e:

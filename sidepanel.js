@@ -24,7 +24,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const transcriptEl = document.getElementById('live-transcript');
   const meterFill = document.getElementById('meter-fill');
-  const activeImage = document.getElementById('active-image');
+  const imageGallery = document.getElementById('image-gallery');
+  const addSnapBtn = document.getElementById('add-snap-btn');
+  const clearSnapsBtn = document.getElementById('clear-snaps-btn');
   const aiResponseText = document.getElementById('ai-response-text');
   const errorDisplay = document.getElementById('error-display');
 
@@ -39,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== STATE ======
   let isRecording = false;
   let aggregatedTranscript = '';
-  let activeCaptureData = null;
+  let activeCaptureDataList = [];
   let currentMode = 'recording';
   let mediaStream = null;
   let mediaRecorder = null;
@@ -58,8 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
     Object.values(views).forEach(v => v && v.classList.add('hidden'));
     if (views[mode]) views[mode].classList.remove('hidden');
 
-    const isVisionResult = (mode === 'result' && activeCaptureData);
-    const isTransResult = (mode === 'result' && !activeCaptureData);
+    const isVisionResult = (mode === 'result' && activeCaptureDataList.length > 0);
+    const isTransResult = (mode === 'result' && activeCaptureDataList.length === 0);
 
     toggleTranscript.classList.toggle('active', mode === 'recording' || isTransResult);
     toggleCapture.classList.toggle('active', mode === 'captured' || isVisionResult);
@@ -69,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cardActionBar.classList.toggle('hidden', !showBar);
 
     if (mode === 'recording') processBtnText.textContent = 'Summarize Transcription';
-    else if (mode === 'captured') processBtnText.textContent = 'Analyze Snapshot';
+    else if (mode === 'captured') processBtnText.textContent = 'Analyze Snapshot(s)';
 
     if (window.lucide) lucide.createIcons();
     updateInputContext();
@@ -83,8 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateInputContext() {
-    const hasCapture = activeCaptureData && (currentMode === 'captured' || (currentMode === 'result' && activeCaptureData));
-    askInput.placeholder = hasCapture ? "Ask about this capture..." : "Ask anything about this meeting...";
+    const hasCapture = activeCaptureDataList.length > 0 && (currentMode === 'captured' || (currentMode === 'result' && activeCaptureDataList.length > 0));
+    askInput.placeholder = hasCapture ? "Ask about these captures..." : "Ask anything about this meeting...";
     appContainer.classList.toggle('has-attachment', !!hasCapture);
   }
 
@@ -530,6 +532,16 @@ document.addEventListener('DOMContentLoaded', () => {
     else stopRecording();
   };
 
+  function renderGallery() {
+    if (!imageGallery) return;
+    imageGallery.innerHTML = '';
+    activeCaptureDataList.forEach((dataUrl) => {
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      imageGallery.appendChild(img);
+    });
+  }
+
   async function captureScreen() {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -537,15 +549,16 @@ document.addEventListener('DOMContentLoaded', () => {
       chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 90 }, async (dataUrl) => {
         if (chrome.runtime.lastError) { showError("Snap failed: " + chrome.runtime.lastError.message); return; }
         // Compress scale on large 4k screens to prevent 413 Payload Too large on backend
-        activeCaptureData = await resizeImageBase64(dataUrl, 1600); 
-        activeImage.src = activeCaptureData;
+        let captured = await resizeImageBase64(dataUrl, 1600); 
+        activeCaptureDataList.push(captured);
+        renderGallery();
         setMode('captured');
       });
     } catch (e) { showError("Snap error: " + e.message); }
   }
 
   async function runAIAction(prompt, extra = {}) {
-    if (!extra.imageBase64) activeCaptureData = null;
+    if (!extra.imageArray || extra.imageArray.length === 0) activeCaptureDataList = [];
     setMode('result');
     aiResponseText.innerHTML = '<span class="thinking-text">Thinking...</span>';
     try {
@@ -586,16 +599,23 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!text.trim()) { showError('No transcript to summarize yet.'); return; }
       runAIAction('Summarize this meeting transcript concisely in bullet points:\n' + text);
     } else if (currentMode === 'captured') {
-      runAIAction('Analyze this screen capture and explain what is shown, highlight any key info.', { imageBase64: activeCaptureData });
+      runAIAction('Analyze these screen captures and explain what is shown, highlight any key info.', { imageArray: activeCaptureDataList });
     }
   };
 
-  toggleTranscript.onclick = () => { activeCaptureData = null; setMode('recording'); };
+  toggleTranscript.onclick = () => { activeCaptureDataList = []; setMode('recording'); };
   toggleCapture.onclick = () => {
-    if (activeCaptureData && currentMode !== 'captured') setMode('captured');
+    if (activeCaptureDataList.length > 0 && currentMode !== 'captured') setMode('captured');
     else captureScreen();
   };
-  backToTranscriptBtn.onclick = () => { activeCaptureData = null; setMode('recording'); };
+  backToTranscriptBtn.onclick = () => { activeCaptureDataList = []; setMode('recording'); };
+
+  if (addSnapBtn) addSnapBtn.onclick = captureScreen;
+  if (clearSnapsBtn) clearSnapsBtn.onclick = () => {
+    activeCaptureDataList = [];
+    renderGallery();
+    setMode('recording');
+  };
 
   sendBtn.onclick = () => {
     let q = askInput.value.trim();
@@ -609,7 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
       q = q + "\n\n--- Meeting / Interview Context ---\n" + contextText;
     }
 
-    const extra = activeCaptureData ? { imageBase64: activeCaptureData } : {};
+    const extra = activeCaptureDataList.length > 0 ? { imageArray: activeCaptureDataList } : {};
     runAIAction(q, extra);
   };
   askInput.onkeypress = (e) => { if (e.key === 'Enter') sendBtn.click(); };

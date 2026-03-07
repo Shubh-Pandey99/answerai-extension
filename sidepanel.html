@@ -107,15 +107,18 @@
             <div class="view-header">
               <div class="card-meta">
                 <span class="meta-icon"><i data-lucide="image"></i></span>
-                Screen Snapshot
+                Screen Snapshots
               </div>
-              <button id="retake-btn" class="retake-btn">
-                <i data-lucide="refresh-cw"></i> Retake
-              </button>
+              <div style="display: flex; gap: 8px;">
+                <button id="add-snap-btn" class="retake-btn">
+                  <i data-lucide="plus"></i> Add Snap
+                </button>
+                <button id="clear-snaps-btn" class="retake-btn" style="color: #f85149;">
+                  <i data-lucide="trash-2"></i> Clear
+                </button>
+              </div>
             </div>
-            <div class="image-frame">
-              <img id="active-image" src="" alt="Captured Context">
-            </div>
+            <div id="image-gallery" class="image-gallery"></div>
           </section>
 
           <!-- AI Result Section -->

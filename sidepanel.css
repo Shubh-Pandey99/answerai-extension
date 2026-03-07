@@ -558,17 +558,21 @@ body {
 }
 
 /* ── Image View ──────────────────────────────────── */
-.image-frame {
-  width: 100%;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: #e1e4e8;
-  flex: 1;
+.image-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 100%;
+  padding-bottom: 8px;
 }
 
-.image-frame img {
+.image-gallery img {
   width: 100%;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
   display: block;
+  border: 1px solid rgba(0,0,0,0.1);
 }
 
 /* ── Card Footer (process btn) ───────────────────── */
