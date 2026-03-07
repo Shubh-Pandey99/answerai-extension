@@ -189,15 +189,16 @@ def get_db_connection():
 try:
     conn = get_db_connection()
     if conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS scribe_sessions (
-                    id VARCHAR(255) PRIMARY KEY,
-                    title VARCHAR(255),
-                    transcript TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS scribe_sessions (
+                id VARCHAR(255) PRIMARY KEY,
+                title VARCHAR(255),
+                transcript TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.close()
         conn.commit()
         conn.close()
 except:
@@ -266,10 +267,12 @@ def get_sessions():
     conn = get_db_connection()
     if not conn: return jsonify({"error": f"No database attached. {db_error}"}), 503
     try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id, title, transcript, created_at FROM scribe_sessions ORDER BY created_at DESC LIMIT 50")
-            cols = [desc[0] for desc in cur.description]
-            rows = [dict(zip(cols, row)) for row in cur.fetchall()]
+        cur = conn.cursor()
+        cur.execute("SELECT id, title, transcript, created_at FROM scribe_sessions ORDER BY created_at DESC LIMIT 50")
+        cols = [desc[0] for desc in cur.description]
+        rows = [dict(zip(cols, row)) for row in cur.fetchall()]
+        cur.close()
+        
         # Convert datetime to string
         for r in rows:
             if r.get('created_at'): r['started_at'] = r['created_at'].isoformat()
@@ -291,14 +294,15 @@ def save_session():
     conn = get_db_connection()
     if not conn: return jsonify({"error": "No database attached"}), 503
     try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO scribe_sessions (id, title, transcript) 
-                VALUES (%s, %s, %s)
-                ON CONFLICT (id) DO UPDATE SET 
-                  title = EXCLUDED.title, 
-                  transcript = EXCLUDED.transcript
-            """, (sid, title, transcript))
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO scribe_sessions (id, title, transcript) 
+            VALUES (%s, %s, %s)
+            ON CONFLICT (id) DO UPDATE SET 
+              title = EXCLUDED.title, 
+              transcript = EXCLUDED.transcript
+        """, (sid, title, transcript))
+        cur.close()
         conn.commit()
         return jsonify({"status": "saved", "id": sid}), 200
     except Exception as e:
@@ -312,8 +316,9 @@ def delete_session(session_id):
     conn = get_db_connection()
     if not conn: return jsonify({"error": "No database attached"}), 503
     try:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM scribe_sessions WHERE id = %s", (session_id,))
+        cur = conn.cursor()
+        cur.execute("DELETE FROM scribe_sessions WHERE id = %s", (session_id,))
+        cur.close()
         conn.commit()
         return jsonify({"status": "deleted"}), 200
     except Exception as e:
