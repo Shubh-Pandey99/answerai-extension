@@ -163,6 +163,10 @@ def favicon():
     return "", 204
 
 @app.get("/")
+@app.get("/api")
+@app.get("/api/")
+@app.get("/api/index")
+@app.get("/api/index.py")
 def root():
     return """
 <!DOCTYPE html>
