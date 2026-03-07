@@ -282,9 +282,11 @@ document.addEventListener('DOMContentLoaded', () => {
               const text = (data.text || '').trim();
               
               // Whisper models aggressively hallucinate these phrases during pure silence
-              const isHallucination = /^(thank you\.?|thanks for watching\.?|subtitles by.*|amara\.org.*|please subscribe\.?|you\.?)$/i.test(text);
+              // Strip punctuation/spaces to catch repeating loops like "Thank you. Thank you."
+              const cleanText = text.toLowerCase().replace(/[^a-z]/g, '');
+              const isHallucination = /^(thankyou|thanksforwatching|subtitlesby.*|amaraorg.*|pleasesubscribe|you|bye)+$/.test(cleanText);
 
-              if (text && text.length > 1 && !['SILENT','MUSIC','.'].includes(text) && !isHallucination) {
+              if (text && text.length > 1 && !['SILENT','MUSIC','.'].includes(text.toUpperCase()) && !isHallucination) {
                 appendTranscript(data.text);
                 logStatus("[" + (data.method || "?") + "] ✓");
               } else {
