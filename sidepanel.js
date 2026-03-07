@@ -535,11 +535,28 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderGallery() {
     if (!imageGallery) return;
     imageGallery.innerHTML = '';
-    activeCaptureDataList.forEach((dataUrl) => {
+    activeCaptureDataList.forEach((dataUrl, index) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'gallery-item';
+      
       const img = document.createElement('img');
       img.src = dataUrl;
-      imageGallery.appendChild(img);
+      
+      const delBtn = document.createElement('button');
+      delBtn.className = 'gallery-del-btn';
+      delBtn.innerHTML = '<i data-lucide="x"></i>';
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        activeCaptureDataList.splice(index, 1);
+        renderGallery();
+        if (activeCaptureDataList.length === 0) setMode('recording');
+      };
+
+      wrap.appendChild(img);
+      wrap.appendChild(delBtn);
+      imageGallery.appendChild(wrap);
     });
+    if (window.lucide) lucide.createIcons();
   }
 
   async function captureScreen() {

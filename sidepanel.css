@@ -567,12 +567,45 @@ body {
   padding-bottom: 8px;
 }
 
+.gallery-item {
+  position: relative;
+  display: flex;
+}
+
 .image-gallery img {
   width: 100%;
   border-radius: var(--radius-sm);
   object-fit: cover;
   display: block;
   border: 1px solid rgba(0,0,0,0.1);
+}
+
+.gallery-del-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  backdrop-filter: blur(2px);
+}
+
+.gallery-del-btn:hover {
+  background: var(--danger);
+  transform: scale(1.1);
+}
+
+.gallery-del-btn i {
+  width: 14px;
+  height: 14px;
 }
 
 /* ── Card Footer (process btn) ───────────────────── */
