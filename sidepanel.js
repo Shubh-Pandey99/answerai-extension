@@ -277,7 +277,14 @@ document.addEventListener('DOMContentLoaded', () => {
       sessionStart = new Date().toISOString();
       sessionId = crypto.randomUUID();
       appContainer.classList.add('recording');
-      
+
+      isPaused = false;
+      if (pauseRecordBtn) {
+        pauseRecordBtn.classList.remove('hidden');
+        pauseRecordBtn.innerHTML = '<i data-lucide="pause"></i>';
+        pauseRecordBtn.style.color = '';
+      }
+
       if (mode === "mic") {
         micRecordBtnText.textContent = "Stop Mic";
         recordBtn.style.display = "none";
@@ -436,6 +443,9 @@ document.addEventListener('DOMContentLoaded', () => {
     mediaStream = null;
     audioContext = null;
     volumeRaf = null;
+
+    if (pauseRecordBtn) pauseRecordBtn.classList.add('hidden');
+
     isRecording = false;
     appContainer.classList.remove('recording');
     recordBtnText.textContent = "Record Tab";
