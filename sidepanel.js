@@ -415,7 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
               mediaRecorder.stop();
               recordNextChunk(); // Start a new file-chunk immediately
             }
-          }, 5000); // 5s segments
+          }, 3000); // 3s segments for faster responsiveness
         }
 
         recordNextChunk();
