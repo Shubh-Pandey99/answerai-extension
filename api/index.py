@@ -268,7 +268,9 @@ def root():
         <div style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 16px;">1</div>
         <h3 style="margin-bottom: 8px; font-size: 18px; color: #f8fafc;">Connect the Backend</h3>
         <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px; min-height: 45px;">Click the ⚙️ Settings icon in the Chrome Extension and paste this Vercel API URL to link your free Groq & Gemini endpoints.</p>
-        <div style="width: 100%; aspect-ratio: 16/9; background: #0f172a; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px;">[ Image: Settings Menu ]</div>
+        <div style="width: 100%; aspect-ratio: 16/9; background: #0f172a; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+          <img src="https://raw.githubusercontent.com/Shubh-Pandey99/scribe/main/assets/setup.png" style="width: 100%; height: 100%; object-fit: cover;" alt="Settings Menu">
+        </div>
       </div>
 
       <!-- Step 2 -->
@@ -276,7 +278,9 @@ def root():
         <div style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 16px;">2</div>
         <h3 style="margin-bottom: 8px; font-size: 18px; color: #f8fafc;">Go Stealth & Record</h3>
         <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px; min-height: 45px;">Click the 👁️ Stealth toggle to blur the UI. Hit 'Record Mic' to begin seamlessly transcribing the interviewer's audio.</p>
-        <div style="width: 100%; aspect-ratio: 16/9; background: #0f172a; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px;">[ Image: Stealth UI & Mic ]</div>
+        <div style="width: 100%; aspect-ratio: 16/9; background: #0f172a; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+          <img src="https://raw.githubusercontent.com/Shubh-Pandey99/scribe/main/assets/stealth.png" style="width: 100%; height: 100%; object-fit: cover;" alt="Stealth UI & Mic">
+        </div>
       </div>
 
       <!-- Step 3 -->
@@ -284,7 +288,9 @@ def root():
         <div style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 16px;">3</div>
         <h3 style="margin-bottom: 8px; font-size: 18px; color: #f8fafc;">Snap Context & Ask</h3>
         <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px; min-height: 45px;">Use Cmd+Shift+4 to screenshot a problem, press Ctrl+V to paste it into Scribe, and instantly receive the optimal AI solution.</p>
-        <div style="width: 100%; aspect-ratio: 16/9; background: #0f172a; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px;">[ Image: AI Output ]</div>
+        <div style="width: 100%; aspect-ratio: 16/9; background: #0f172a; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+          <img src="https://raw.githubusercontent.com/Shubh-Pandey99/scribe/main/assets/output.png" style="width: 100%; height: 100%; object-fit: cover;" alt="AI Output">
+        </div>
       </div>
 
     </div>
