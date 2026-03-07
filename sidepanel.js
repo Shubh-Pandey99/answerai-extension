@@ -466,10 +466,19 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await res.json();
       if (data.answer) {
-        aiResponseText.innerHTML = data.answer
-          .replace(/\n\n/g, '<br><br>')
-          .replace(/\n/g, '<br>')
-          .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+        if (window.marked) {
+          aiResponseText.innerHTML = marked.parse(data.answer);
+          if (window.hljs) {
+            aiResponseText.querySelectorAll('pre code').forEach((block) => {
+              hljs.highlightElement(block);
+            });
+          }
+        } else {
+          aiResponseText.innerHTML = data.answer
+            .replace(/\n\n/g, '<br><br>')
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+        }
       } else {
         aiResponseText.textContent = data.error || 'No response from AI.';
       }

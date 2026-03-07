@@ -6,8 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scribe</title>
   <link rel="stylesheet" href="sidepanel.css">
+  <link rel="stylesheet" href="highlight.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="lucide.min.js"></script>
+  <script src="marked.min.js"></script>
+  <script src="highlight.min.js"></script>
 </head>
 
 <body>
@@ -124,7 +127,7 @@
                 <i data-lucide="arrow-left"></i> Back
               </button>
             </div>
-            <div id="ai-response-text" class="ai-text" contenteditable="true"></div>
+            <div id="ai-response-text" class="ai-text markdown-body"></div>
           </section>
 
           <!-- History Section -->

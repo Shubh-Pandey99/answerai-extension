@@ -482,8 +482,7 @@ body {
   min-height: 0;
 }
 
-.transcript-box,
-.ai-text {
+.transcript-box {
   font-size: 14px;
   line-height: 1.75;
   color: #1f2328;
@@ -491,6 +490,68 @@ body {
   white-space: pre-wrap;
   flex: 1;
   min-height: 120px;
+}
+
+.ai-text {
+  font-size: 14px;
+  line-height: 1.75;
+  color: #1f2328;
+  outline: none;
+  flex: 1;
+  min-height: 120px;
+  /* Allow markdown to wrap cleanly */
+  overflow-wrap: anywhere;
+  /* Ensure scrolling if content is huge */
+  overflow-y: auto;
+}
+
+/* ── Markdown styling inside AI Insight ─────────────────────── */
+.ai-text p {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.ai-text pre {
+  background: #1e1e1e; /* Base dark background if highlight.js not overriding */
+  color: #d4d4d4;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', 'Menlo', 'Courier New', monospace;
+  font-size: 13px;
+  margin-top: 10px;
+  margin-bottom: 16px;
+  /* Reset highlight.js background border if any */
+  border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.ai-text code {
+  font-family: 'JetBrains Mono', 'Menlo', 'Courier New', monospace;
+  font-size: 13.5px;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: #d02020;
+}
+
+.ai-text pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+  font-size: 13px;
+  white-space: pre;
+}
+
+.ai-text ul, .ai-text ol {
+  padding-left: 20px;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.ai-text li {
+  margin-bottom: 6px;
 }
 
 .transcript-box[placeholder]:empty:before {
