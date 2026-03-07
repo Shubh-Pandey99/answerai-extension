@@ -164,6 +164,7 @@ except Exception as e:
     db_error = f"Import error: {e}"
 
 def get_db_connection():
+    global db_error
     if db_error: return None
     db_url = os.environ.get("POSTGRES_URL")
     if not db_url: return None
@@ -181,7 +182,6 @@ def get_db_connection():
             ssl_context=context
         )
     except Exception as e:
-        global db_error
         db_error = f"Connect error: {e}"
         return None
 
