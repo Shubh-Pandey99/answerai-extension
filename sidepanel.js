@@ -283,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseRecordBtn.classList.remove('hidden');
         pauseRecordBtn.innerHTML = '<i data-lucide="pause"></i>';
         pauseRecordBtn.style.color = '';
+        if (window.lucide) lucide.createIcons();
       }
 
       if (mode === "mic") {
