@@ -279,13 +279,19 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(timeout);
             if (res.ok) {
               const data = await res.json();
-              if (data && data.text && data.text.trim() && data.text.trim().length > 1 && !['SILENT','MUSIC','.'].includes(data.text.trim())) {
+              const text = (data.text || '').trim();
+              
+              // Whisper models aggressively hallucinate these phrases during pure silence
+              const isHallucination = /^(thank you\.?|thanks for watching\.?|subtitles by.*|amara\.org.*|please subscribe\.?|you\.?)$/i.test(text);
+
+              if (text && text.length > 1 && !['SILENT','MUSIC','.'].includes(text) && !isHallucination) {
                 appendTranscript(data.text);
                 logStatus("[" + (data.method || "?") + "] ✓");
               } else {
                 // Show debug info so we can see WHY transcription failed
+                const reason = isHallucination ? "hallucination dropped" : "no speech";
                 const dbg = data.debug ? " | " + data.debug.substring(0, 80) : "";
-                logStatus((data.method || "none") + ": no speech" + dbg);
+                logStatus((data.method || "none") + ": " + reason + dbg);
               }
             } else {
               const t = await res.text();
