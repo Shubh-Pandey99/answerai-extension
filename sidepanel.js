@@ -219,21 +219,21 @@ document.addEventListener('DOMContentLoaded', () => {
       const apiBase = await getApiBase();
       logStatus("API: " + new URL(apiBase).hostname);
 
-      let transcribePending = false;
-      mediaRecorder.ondataavailable = async (e) => {
-        if (!e.data || e.data.size < 100) return;
-        if (transcribePending) { logStatus("⏳ waiting for previous chunk..."); return; }
-        const curVol = meterFill ? parseInt(meterFill.style.width) || 0 : -1;
-        logStatus("Chunk: " + (e.data.size / 1024).toFixed(1) + "KB vol:" + curVol + "%");
-        const b64 = await blobToDataURL(e.data);
-        transcribePending = true;
+      // Chunk queue - process one at a time, buffer the rest
+      const chunkQueue = [];
+      let processing = false;
+
+      async function processQueue() {
+        if (processing || chunkQueue.length === 0) return;
+        processing = true;
+        const { b64, mime } = chunkQueue.shift();
         try {
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 15000);
           const res = await fetch(apiBase + '/api/transcribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ audioBase64: b64, mimeType: e.data.type || 'audio/webm', sessionId }),
+            body: JSON.stringify({ audioBase64: b64, mimeType: mime || 'audio/webm', sessionId }),
             signal: controller.signal
           });
           clearTimeout(timeout);
@@ -243,24 +243,44 @@ document.addEventListener('DOMContentLoaded', () => {
               appendTranscript(data.text);
               logStatus("[" + (data.method || "?") + "] transcribed");
             } else {
-              const method = data.method || "skip";
-              logStatus("● " + method + ": no speech detected");
+              logStatus("● " + (data.method || "skip") + ": no speech");
             }
           } else {
             const t = await res.text();
             logStatus("API " + res.status + ": " + t.substring(0, 50));
           }
         } catch (err) {
-          if (err.name === 'AbortError') logStatus("⏱ chunk timed out, skipping");
+          if (err.name === 'AbortError') logStatus("⏱ chunk timed out");
           else logStatus("Net: " + err.message);
-        } finally {
-          transcribePending = false;
         }
+        processing = false;
+        if (chunkQueue.length > 0) processQueue(); // Process next in queue
+      }
+
+      mediaRecorder.ondataavailable = async (e) => {
+        if (!e.data || e.data.size < 100) return;
+        const curVol = meterFill ? parseInt(meterFill.style.width) || 0 : -1;
+        logStatus("Chunk: " + (e.data.size / 1024).toFixed(1) + "KB vol:" + curVol + "%");
+        const b64 = await blobToDataURL(e.data);
+        // Keep max 3 chunks in queue to avoid memory buildup
+        if (chunkQueue.length >= 3) chunkQueue.shift();
+        chunkQueue.push({ b64, mime: e.data.type });
+        processQueue();
       };
 
+      // Monitor recorder state
+      mediaRecorder.onstop = () => logStatus("⚠ MediaRecorder stopped");
+
       logStatus("Recording started!");
-      mediaStream.getVideoTracks()[0]?.addEventListener('ended', () => stopRecording());
-      mediaStream.getAudioTracks()[0]?.addEventListener('ended', () => stopRecording());
+      // ONLY stop on AUDIO track ending (video track can end when switching tabs — that's OK)
+      mediaStream.getAudioTracks()[0]?.addEventListener('ended', () => {
+        logStatus("⚠ Audio track ended");
+        stopRecording();
+      });
+      // Video track ending is NOT fatal — just log it
+      mediaStream.getVideoTracks()[0]?.addEventListener('ended', () => {
+        logStatus("ℹ Video track ended (audio continues)");
+      });
 
     } catch (err) {
       if (err.name === 'NotAllowedError') logStatus("Share cancelled.");
