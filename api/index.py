@@ -247,6 +247,12 @@ def transcribe():
         else:
             encoded = audio_b64
         
+        # Fix base64 padding (browsers sometimes omit trailing '=')
+        encoded = encoded.strip()
+        padding = 4 - len(encoded) % 4
+        if padding != 4:
+            encoded += '=' * padding
+        
         buf = base64.b64decode(encoded)
         log.info("Received audio chunk: %d bytes, mime=%s", len(buf), mime)
         
