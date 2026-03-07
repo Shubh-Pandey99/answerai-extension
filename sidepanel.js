@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
     histList.innerHTML = '<div class="hist-loading">Loading...</div>';
 
     chrome.storage.local.get(['session_index'], async (r) => {
-      const idx = r.session_index || [];
+      let idx = r.session_index || [];
       if (idx.length === 0) {
         histList.innerHTML = '<div class="hist-empty">No sessions yet.<br>Start recording to create your first one.</div>';
         return;
@@ -400,24 +400,49 @@ document.addEventListener('DOMContentLoaded', () => {
       const keys = idx.map(id => 'session_' + id);
       chrome.storage.local.get(keys, (sessions) => {
         histList.innerHTML = '';
+        
+        // Add a "Clear All" button maybe? Left out for simplicity, individual per-card delete below
+        
         idx.forEach(id => {
           const s = sessions['session_' + id];
           if (!s) return;
           const card = document.createElement('div');
           card.className = 'hist-card';
+          
           const date = s.started_at ? new Date(s.started_at).toLocaleDateString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Unknown';
+          
           card.innerHTML = `
-            <div class="hist-date">${date}</div>
+            <div class="hist-header-row">
+              <div class="hist-date">${date}</div>
+              <button class="hist-delete-btn" title="Delete session"><i data-lucide="trash-2"></i></button>
+            </div>
             <div class="hist-title">${s.title || 'Untitled session'}</div>
             <div class="hist-preview">${(s.transcript || '').substring(0, 80)}...</div>
           `;
+          
+          // Delete button logic
+          const deleteBtn = card.querySelector('.hist-delete-btn');
+          deleteBtn.onclick = (e) => {
+            e.stopPropagation(); // Prevent opening the session
+            // Remove from array
+            idx = idx.filter(i => i !== id);
+            chrome.storage.local.set({ session_index: idx });
+            chrome.storage.local.remove('session_' + id);
+            // Refresh view
+            showHistory();
+          };
+
+          // Open session logic
           card.onclick = () => {
             aggregatedTranscript = s.transcript || '';
             transcriptEl.textContent = aggregatedTranscript;
             setMode('recording');
           };
+          
           histList.appendChild(card);
         });
+        
+        if (window.lucide) lucide.createIcons();
       });
     });
   }

@@ -190,15 +190,13 @@ def root():
 </head>
 <body>
   <div class="card">
-    <img class="icon" src="/favicon.png" alt="Scribe">
+    <div style="font-size: 48px; margin-bottom: 16px;">🎙️</div>
     <h1>Scribe API</h1>
     <div class="badge">● API Running</div>
     <p>AI-powered live transcription, screen capture analysis,<br>and real-time Q&amp;A for the Scribe Chrome extension.</p>
     <div class="endpoints">
       <div class="endpoint"><span class="method">POST</span><span class="path">/api/transcribe</span><span class="desc">Audio → text</span></div>
       <div class="endpoint"><span class="method">POST</span><span class="path">/api/answer</span><span class="desc">AI Q&amp;A</span></div>
-      <div class="endpoint"><span class="method">POST</span><span class="path">/api/sessions</span><span class="desc">Save session</span></div>
-      <div class="endpoint"><span class="method">GET</span><span class="path">/api/sessions</span><span class="desc">List sessions</span></div>
       <div class="endpoint"><span class="method">GET</span><span class="path">/health</span><span class="desc">Health check</span></div>
     </div>
   </div>

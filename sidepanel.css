@@ -713,13 +713,42 @@ body {
   transform: translateY(-1px);
 }
 
+.hist-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
 .hist-date {
   font-size: 10px;
   font-weight: 600;
   color: #9ca8b5;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  margin-bottom: 4px;
+}
+
+.hist-delete-btn {
+  background: transparent;
+  border: none;
+  color: #c1c8d0;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.hist-delete-btn i {
+  width: 14px;
+  height: 14px;
+}
+
+.hist-delete-btn:hover {
+  color: #f85149;
+  background: rgba(248, 81, 73, 0.1);
 }
 
 .hist-title {
