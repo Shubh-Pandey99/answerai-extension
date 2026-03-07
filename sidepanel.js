@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const appContainer = document.getElementById('app');
   const recordBtn = document.getElementById('main-record-btn');
   const recordBtnText = document.getElementById('record-btn-text');
+  const micRecordBtn = document.getElementById('mic-record-btn');
+  const micRecordBtnText = document.getElementById('mic-record-btn-text');
   const toggleTranscript = document.getElementById('toggle-transcript');
   const toggleCapture = document.getElementById('toggle-capture');
   const backToTranscriptBtn = document.getElementById('back-to-transcript-btn');
@@ -165,6 +167,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ====== CORE RECORDING ======
+  async function startMicRecording() {
+    try {
+      logStatus("Requesting microphone...");
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioTracks = mediaStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        showError("No audio track from microphone.");
+        mediaStream.getTracks().forEach(t => t.stop());
+        return;
+      }
+      logStatus("✅ Mic audio captured!");
+      setupRecording(audioTracks, "mic");
+    } catch (err) {
+      if (err.name === 'NotAllowedError') logStatus("Mic access denied.");
+      else { showError("Mic recording failed: " + err.message); logStatus("Error: " + err.message); }
+    }
+  }
+
   async function startRecording() {
     try {
       logStatus("Getting active tab...");
@@ -207,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       logStatus("✅ Tab audio captured! Tracks: " + audioTracks.length);
-      setupRecording(audioTracks);
+      setupRecording(audioTracks, "tab");
 
     } catch (err) {
       logStatus("tabCapture error: " + err.message + ", trying fallback...");
@@ -241,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       logStatus("✅ Display audio captured!");
-      setupRecording(audioTracks);
+      setupRecording(audioTracks, "tab");
 
     } catch (err) {
       if (err.name === 'NotAllowedError') logStatus("Share cancelled.");
@@ -250,14 +270,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Common setup for recording (used by both tabCapture and getDisplayMedia)
-  function setupRecording(audioTracks) {
+  function setupRecording(audioTracks, mode) {
       isRecording = true;
       aggregatedTranscript = '';
       transcriptEl.textContent = '';
       sessionStart = new Date().toISOString();
       sessionId = crypto.randomUUID();
       appContainer.classList.add('recording');
-      recordBtnText.textContent = "Stop Recording";
+      
+      if (mode === "mic") {
+        micRecordBtnText.textContent = "Stop Mic";
+        recordBtn.style.display = "none";
+      } else {
+        recordBtnText.textContent = "Stop Tab";
+        micRecordBtn.style.display = "none";
+      }
 
       // Volume meter
       audioContext = new AudioContext();
@@ -407,7 +434,10 @@ document.addEventListener('DOMContentLoaded', () => {
     volumeRaf = null;
     isRecording = false;
     appContainer.classList.remove('recording');
-    recordBtnText.textContent = "Start Recording";
+    recordBtnText.textContent = "Record Tab";
+    micRecordBtnText.textContent = "Record Mic";
+    recordBtn.style.display = "";
+    micRecordBtn.style.display = "";
     if (meterFill) meterFill.style.width = '0%';
     logStatus("Recording stopped.");
     saveSession();
@@ -499,6 +529,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== UI HANDLERS ======
   recordBtn.onclick = () => {
     if (!isRecording) startRecording();
+    else stopRecording();
+  };
+  micRecordBtn.onclick = () => {
+    if (!isRecording) startMicRecording();
     else stopRecording();
   };
 

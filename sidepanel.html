@@ -86,10 +86,16 @@
                   <div id="meter-fill" class="meter-bar"></div>
                 </div>
               </div>
-              <button id="main-record-btn" class="record-action-btn">
-                <div class="pulse-dot"></div>
-                <span id="record-btn-text">Start Recording</span>
-              </button>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button id="mic-record-btn" class="record-action-btn">
+                  <div class="pulse-dot"></div>
+                  <span id="mic-record-btn-text">Record Mic</span>
+                </button>
+                <button id="main-record-btn" class="record-action-btn">
+                  <div class="pulse-dot"></div>
+                  <span id="record-btn-text">Record Tab</span>
+                </button>
+              </div>
             </div>
 
             <div id="live-transcript" class="transcript-box" contenteditable="true"
