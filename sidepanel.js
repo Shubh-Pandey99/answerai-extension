@@ -141,12 +141,62 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== CORE RECORDING ======
   async function startRecording() {
     try {
-      logStatus("Requesting screen share...");
+      logStatus("Getting active tab...");
 
+      // Step 1: Get the active tab
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id) {
+        showError("No active tab found.");
+        return;
+      }
+      logStatus("Tab: " + (tab.title || tab.url).substring(0, 40));
+
+      // Step 2: Get a tabCapture stream ID from the background service worker
+      logStatus("Requesting tab audio...");
+      const captureResult = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ type: 'start-tab-capture', tabId: tab.id }, resolve);
+      });
+
+      if (captureResult?.error) {
+        // Fallback to getDisplayMedia if tabCapture fails
+        logStatus("tabCapture failed: " + captureResult.error + ", trying screen share...");
+        return startRecordingFallback();
+      }
+
+      // Step 3: Use the stream ID with getUserMedia (reliable audio!)
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          mandatory: {
+            chromeMediaSource: 'tab',
+            chromeMediaSourceId: captureResult.streamId
+          }
+        }
+      });
+
+      const audioTracks = mediaStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        showError("No audio track from tab capture.");
+        mediaStream.getTracks().forEach(t => t.stop());
+        return;
+      }
+
+      logStatus("✅ Tab audio captured! Tracks: " + audioTracks.length);
+      setupRecording(audioTracks);
+
+    } catch (err) {
+      logStatus("tabCapture error: " + err.message + ", trying fallback...");
+      return startRecordingFallback();
+    }
+  }
+
+  // Fallback: use getDisplayMedia if tabCapture doesn't work
+  async function startRecordingFallback() {
+    try {
+      logStatus("Requesting screen share...");
       mediaStream = await navigator.mediaDevices.getDisplayMedia({
         audio: true,
         video: true,
-        preferCurrentTab: true
+        preferCurrentTab: false
       });
 
       const audioTracks = mediaStream.getAudioTracks();
@@ -164,9 +214,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      logStatus("✅ Display audio captured!");
+      setupRecording(audioTracks);
+
+    } catch (err) {
+      if (err.name === 'NotAllowedError') logStatus("Share cancelled.");
+      else { showError("Recording failed: " + err.message); logStatus("Error: " + err.message); }
+    }
+  }
+
+  // Common setup for recording (used by both tabCapture and getDisplayMedia)
+  function setupRecording(audioTracks) {
       isRecording = true;
       sessionStart = new Date().toISOString();
-      sessionId = crypto.randomUUID(); // new session per recording
+      sessionId = crypto.randomUUID();
       appContainer.classList.add('recording');
       recordBtnText.textContent = "Stop Recording";
 
@@ -184,29 +245,26 @@ document.addEventListener('DOMContentLoaded', () => {
         volumeRaf = requestAnimationFrame(volumeTick);
       };
       volumeRaf = requestAnimationFrame(volumeTick);
-      logStatus("Audio acquired!");
+      logStatus("Audio stream active!");
 
-      // Try multiple MediaRecorder configs
+      // MediaRecorder - audio only
       const audioOnlyStream = new MediaStream(audioTracks);
       const configs = [
         [audioOnlyStream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 64000 }],
         [audioOnlyStream, { mimeType: 'audio/webm', audioBitsPerSecond: 64000 }],
         [audioOnlyStream, { audioBitsPerSecond: 64000 }],
         [audioOnlyStream, {}],
-        [mediaStream, { mimeType: 'video/webm;codecs=vp8,opus' }],
-        [mediaStream, {}],
       ];
 
       let recorder = null;
       for (const [stream, opts] of configs) {
         try {
           recorder = new MediaRecorder(stream, opts);
-          recorder.start(5000); // 5s chunks - fits Groq free tier rate limit (20 req/min)
+          recorder.start(5000);
           logStatus("Recorder: " + recorder.mimeType);
           break;
         } catch { recorder = null; }
       }
-
       if (!recorder) {
         showError("No working recorder on this device.");
         stopRecording();
@@ -216,76 +274,66 @@ document.addEventListener('DOMContentLoaded', () => {
       mediaRecorder = recorder;
       mediaRecorder.onerror = (ev) => logStatus("Rec err: " + (ev.error?.message || "?"));
 
-      const apiBase = await getApiBase();
-      logStatus("API: " + new URL(apiBase).hostname);
+      getApiBase().then(apiBase => {
+        logStatus("API: " + new URL(apiBase).hostname);
 
-      // Chunk queue - process one at a time, buffer the rest
-      const chunkQueue = [];
-      let processing = false;
+        // Chunk queue - process one at a time, buffer the rest
+        const chunkQueue = [];
+        let processing = false;
 
-      async function processQueue() {
-        if (processing || chunkQueue.length === 0) return;
-        processing = true;
-        const { b64, mime } = chunkQueue.shift();
-        try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 15000);
-          const res = await fetch(apiBase + '/api/transcribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ audioBase64: b64, mimeType: mime || 'audio/webm', sessionId }),
-            signal: controller.signal
-          });
-          clearTimeout(timeout);
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.text && data.text.trim() && data.text.trim().length > 1 && !['SILENT','MUSIC','.'].includes(data.text.trim())) {
-              appendTranscript(data.text);
-              logStatus("[" + (data.method || "?") + "] transcribed");
+        async function processQueue() {
+          if (processing || chunkQueue.length === 0) return;
+          processing = true;
+          const { b64, mime } = chunkQueue.shift();
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 15000);
+            const res = await fetch(apiBase + '/api/transcribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ audioBase64: b64, mimeType: mime || 'audio/webm', sessionId }),
+              signal: controller.signal
+            });
+            clearTimeout(timeout);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.text && data.text.trim() && data.text.trim().length > 1 && !['SILENT','MUSIC','.'].includes(data.text.trim())) {
+                appendTranscript(data.text);
+                logStatus("[" + (data.method || "?") + "] transcribed");
+              } else {
+                logStatus("● " + (data.method || "skip") + ": no speech");
+              }
             } else {
-              logStatus("● " + (data.method || "skip") + ": no speech");
+              const t = await res.text();
+              logStatus("API " + res.status + ": " + t.substring(0, 50));
             }
-          } else {
-            const t = await res.text();
-            logStatus("API " + res.status + ": " + t.substring(0, 50));
+          } catch (err) {
+            if (err.name === 'AbortError') logStatus("⏱ chunk timed out");
+            else logStatus("Net: " + err.message);
           }
-        } catch (err) {
-          if (err.name === 'AbortError') logStatus("⏱ chunk timed out");
-          else logStatus("Net: " + err.message);
+          processing = false;
+          if (chunkQueue.length > 0) processQueue();
         }
-        processing = false;
-        if (chunkQueue.length > 0) processQueue(); // Process next in queue
-      }
 
-      mediaRecorder.ondataavailable = async (e) => {
-        if (!e.data || e.data.size < 100) return;
-        const curVol = meterFill ? parseInt(meterFill.style.width) || 0 : -1;
-        logStatus("Chunk: " + (e.data.size / 1024).toFixed(1) + "KB vol:" + curVol + "%");
-        const b64 = await blobToDataURL(e.data);
-        // Keep max 3 chunks in queue to avoid memory buildup
-        if (chunkQueue.length >= 3) chunkQueue.shift();
-        chunkQueue.push({ b64, mime: e.data.type });
-        processQueue();
-      };
+        mediaRecorder.ondataavailable = async (e) => {
+          if (!e.data || e.data.size < 100) return;
+          const curVol = meterFill ? parseInt(meterFill.style.width) || 0 : -1;
+          logStatus("Chunk: " + (e.data.size / 1024).toFixed(1) + "KB vol:" + curVol + "%");
+          const b64 = await blobToDataURL(e.data);
+          if (chunkQueue.length >= 3) chunkQueue.shift();
+          chunkQueue.push({ b64, mime: e.data.type });
+          processQueue();
+        };
+      });
 
-      // Monitor recorder state
       mediaRecorder.onstop = () => logStatus("⚠ MediaRecorder stopped");
 
-      logStatus("Recording started!");
-      // ONLY stop on AUDIO track ending (video track can end when switching tabs — that's OK)
-      mediaStream.getAudioTracks()[0]?.addEventListener('ended', () => {
+      logStatus("🎙 Recording started!");
+      // Stop only on audio track ending
+      audioTracks[0]?.addEventListener('ended', () => {
         logStatus("⚠ Audio track ended");
         stopRecording();
       });
-      // Video track ending is NOT fatal — just log it
-      mediaStream.getVideoTracks()[0]?.addEventListener('ended', () => {
-        logStatus("ℹ Video track ended (audio continues)");
-      });
-
-    } catch (err) {
-      if (err.name === 'NotAllowedError') logStatus("Share cancelled.");
-      else { showError("Recording failed: " + err.message); logStatus("Error: " + err.message); }
-    }
   }
 
   function stopRecording() {

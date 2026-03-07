@@ -1,4 +1,4 @@
-// Background service worker - handles extension lifecycle\n// Audio capture is handled in sidepanel.js via getDisplayMedia
+// Background service worker - handles extension lifecycle and tab capture
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -19,5 +19,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'get-state') {
     sendResponse?.({ ok: true });
     return true;
+  }
+  
+  // Tab capture - sidepanel requests a stream ID for tab audio
+  if (msg.type === 'start-tab-capture') {
+    const targetTabId = msg.tabId;
+    chrome.tabCapture.getMediaStreamId({ targetTabId }, (streamId) => {
+      if (chrome.runtime.lastError) {
+        sendResponse({ error: chrome.runtime.lastError.message });
+      } else {
+        sendResponse({ streamId });
+      }
+    });
+    return true; // async response
   }
 });
