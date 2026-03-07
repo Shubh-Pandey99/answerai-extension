@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const transcriptEl = document.getElementById('live-transcript');
   const meterFill = document.getElementById('meter-fill');
-  const statusLog = document.getElementById('status-log');
   const activeImage = document.getElementById('active-image');
   const aiResponseText = document.getElementById('ai-response-text');
   const errorDisplay = document.getElementById('error-display');
@@ -51,12 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let sessionStart = null;
 
   function logStatus(text) {
-    if (!statusLog) return;
-    const item = document.createElement('div');
-    item.className = 'status-item';
-    item.textContent = '\u25cf ' + text;
-    statusLog.prepend(item);
-    if (statusLog.children.length > 6) statusLog.lastElementChild.remove();
+    console.log("[Scribe]", text);
   }
 
   function setMode(mode) {

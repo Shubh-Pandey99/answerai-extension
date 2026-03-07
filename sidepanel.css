@@ -369,21 +369,6 @@ body {
   transition: width 0.08s ease;
 }
 
-/* ── Status Feed ─────────────────────────────────── */
-.status-feed {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px dashed #dde1e7;
-  font-size: 10px;
-  color: #9ca8b5;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  flex-shrink: 0;
-}
-
-.status-item {
-  margin-bottom: 1px;
-  line-height: 1.5;
-}
 
 /* ── Record Button ───────────────────────────────── */
 .record-action-btn {
