@@ -34,12 +34,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const sendBtn = document.getElementById('send-btn');
   const dashboardBtn = document.getElementById('dashboard-btn');
   const settingsBtn = document.getElementById('settings-btn');
+  const stealthBtn = document.getElementById('stealth-btn');
+  const pauseRecordBtn = document.getElementById('pause-record-btn');
   const settingsOverlay = document.getElementById('settings-overlay');
   const settingsCloseBtn = document.getElementById('settings-close-btn');
   const retakeBtn = document.getElementById('retake-btn');
 
   // ====== STATE ======
   let isRecording = false;
+  let isPaused = false;
+  let isStealth = false;
   let aggregatedTranscript = '';
   let activeCaptureDataList = [];
   let currentMode = 'recording';
@@ -321,10 +325,14 @@ document.addEventListener('DOMContentLoaded', () => {
           try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 15000);
+            
+            // Append context snippet so ai engine properly stitches word boundaries
+            const previousText = aggregatedTranscript.slice(-500); 
+
             const res = await fetch(apiBase + '/api/transcribe', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ audioBase64: b64, mimeType: mime || 'audio/webm', sessionId }),
+              body: JSON.stringify({ audioBase64: b64, mimeType: mime || 'audio/webm', sessionId, previousText }),
               signal: controller.signal
             });
             clearTimeout(timeout);
@@ -383,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
           mediaRecorder.onerror = (ev) => logStatus("Rec err: " + (ev.error?.message || "?"));
 
           mediaRecorder.ondataavailable = async (e) => {
-            if (!e.data || e.data.size < 100) return;
+            if (!e.data || e.data.size < 100 || isPaused) return; // Drop frame if paused or null
             const curVol = meterFill ? parseInt(meterFill.style.width) || 0 : -1;
             logStatus("Chunk: " + (e.data.size / 1024).toFixed(1) + "KB vol:" + curVol + "%");
             const b64 = await blobToDataURL(e.data);
@@ -640,9 +648,12 @@ document.addEventListener('DOMContentLoaded', () => {
     askInput.value = '';
 
     // Automatically inject the live transcript context into the user's question!
-    // This allows the AI to answer questions like "what did they just ask me to do?"
-    const contextText = transcriptEl.innerText || aggregatedTranscript;
+    // Slice off the last ~1000 words (or chunk of logic) so Gemini doesn't 500-error crash on infinite transcripts.
+    let contextText = transcriptEl.innerText || aggregatedTranscript;
     if (contextText.trim()) {
+      if (contextText.length > 8000) {
+        contextText = "..." + contextText.slice(-8000);
+      }
       q = q + "\n\n--- Meeting / Interview Context ---\n" + contextText;
     }
 
@@ -650,6 +661,53 @@ document.addEventListener('DOMContentLoaded', () => {
     runAIAction(q, extra);
   };
   askInput.onkeypress = (e) => { if (e.key === 'Enter') sendBtn.click(); };
+
+  // Stealth mode toggle
+  if (stealthBtn) {
+    stealthBtn.onclick = () => {
+      isStealth = !isStealth;
+      appContainer.classList.toggle('stealth-mode', isStealth);
+      stealthBtn.innerHTML = `<i data-lucide="${isStealth ? 'eye-off' : 'eye'}"></i>`;
+      if (window.lucide) lucide.createIcons();
+    };
+  }
+
+  // Pause Mic toggle
+  if (pauseRecordBtn) {
+    pauseRecordBtn.onclick = () => {
+      isPaused = !isPaused;
+      if (isPaused) {
+        pauseRecordBtn.innerHTML = '<i data-lucide="play"></i>';
+        pauseRecordBtn.style.color = '#f85149';
+        logStatus("Recording paused.");
+      } else {
+        pauseRecordBtn.innerHTML = '<i data-lucide="pause"></i>';
+        pauseRecordBtn.style.color = '';
+        logStatus("Recording resumed.");
+      }
+      if (window.lucide) lucide.createIcons();
+    };
+  }
+
+  // Native Clipboard support
+  document.addEventListener('paste', async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    let imagePasted = false;
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+            const blob = items[i].getAsFile();
+            const dataUrl = await blobToDataURL(blob);
+            const resized = await resizeImageBase64(dataUrl, 1600);
+            activeCaptureDataList.push(resized);
+            imagePasted = true;
+        }
+    }
+    if (imagePasted) {
+        renderGallery();
+        if (currentMode !== 'captured') setMode('captured');
+    }
+  });
 
   // History button — show local sessions panel
   dashboardBtn.onclick = () => showHistory();

@@ -36,6 +36,7 @@
       </div>
 
       <div class="header-actions">
+        <button class="ghost-btn" id="stealth-btn" title="Stealth Mode"><i data-lucide="eye"></i></button>
         <button class="ghost-btn" id="dashboard-btn" title="Meeting History"><i data-lucide="history"></i></button>
         <button class="ghost-btn" id="settings-btn" title="Settings"><i data-lucide="settings"></i></button>
       </div>
@@ -87,6 +88,9 @@
                 </div>
               </div>
               <div style="display: flex; gap: 8px; align-items: center;">
+                <button id="pause-record-btn" class="record-action-btn hidden" title="Pause Recording">
+                  <i data-lucide="pause"></i>
+                </button>
                 <button id="mic-record-btn" class="record-action-btn">
                   <div class="pulse-dot"></div>
                   <span id="mic-record-btn-text">Record Mic</span>

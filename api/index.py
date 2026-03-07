@@ -362,6 +362,7 @@ def transcribe():
         audio_b64 = data.get("audioBase64")
         mime = data.get("mimeType","audio/webm")
         session_id = secure_filename(data.get("sessionId","default"))
+        previous_text = data.get("previousText", "")
         if not audio_b64: return jsonify({"error":"No audioBase64"}), 400
 
         # decode to temp file
@@ -397,7 +398,7 @@ def transcribe():
             try:
                 groq_client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
                 with open(tmp_path, "rb") as fp:
-                    tr = groq_client.audio.transcriptions.create(model="whisper-large-v3-turbo", file=fp)
+                    tr = groq_client.audio.transcriptions.create(model="whisper-large-v3-turbo", file=fp, prompt=previous_text)
                 text = getattr(tr, "text", "").strip()
                 method = "groq-whisper"
                 debug_info = f"groq returned {len(text)} chars"
@@ -421,7 +422,7 @@ def transcribe():
                 try:
                     client = OpenAI(api_key=oai_key)
                     with open(tmp_path, "rb") as fp:
-                        tr = client.audio.transcriptions.create(model="whisper-1", file=fp)
+                        tr = client.audio.transcriptions.create(model="whisper-1", file=fp, prompt=previous_text)
                     text = getattr(tr, "text", "").strip()
                     method = "whisper"
                     debug_info += f" | whisper returned {len(text)} chars"
@@ -442,7 +443,11 @@ def transcribe():
                         "data": encoded
                     }
                 }
-                prompt = "Transcribe this audio exactly. Output ONLY the spoken words, nothing else. If there is music but no speech, output just the word MUSIC. If completely silent, output SILENT."
+                prompt = (
+                    "Transcribe this audio exactly. Output ONLY the spoken words, nothing else. "
+                    "If there is music but no speech, output just the word MUSIC. If completely silent, output SILENT. "
+                    f"Previous context for smooth stitching: '{previous_text[-200:]}'"
+                )
                 
                 # Try with retry + model fallback for rate limits
                 models_to_try = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "models/gemini-1.5-flash"]

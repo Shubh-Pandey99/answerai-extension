@@ -881,3 +881,13 @@ body {
     padding: 5px 8px;
   }
 }
+
+/* ── Stealth Mode ────────────────────────────────── */
+.stealth-mode .saas-header { opacity: 0.3; transition: var(--transition); }
+.stealth-mode:hover .saas-header { opacity: 1; }
+.stealth-mode .transcript-box { filter: blur(5px); color: transparent; text-shadow: 0 0 10px rgba(255,255,255,0.7); pointer-events: none; transition: filter 0.2s; }
+.stealth-mode:hover .transcript-box { filter: none; color: var(--text-dark); text-shadow: none; pointer-events: auto; }
+.stealth-mode .image-gallery { filter: blur(10px); transition: filter 0.2s; }
+.stealth-mode:hover .image-gallery { filter: none; }
+.stealth-mode .ai-text { filter: blur(5px); color: transparent; text-shadow: 0 0 10px rgba(255,255,255,0.7); transition: filter 0.2s; }
+.stealth-mode:hover .ai-text { filter: none; color: inherit; text-shadow: none; }
