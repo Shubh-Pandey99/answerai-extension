@@ -506,10 +506,18 @@ document.addEventListener('DOMContentLoaded', () => {
   backToTranscriptBtn.onclick = () => { activeCaptureData = null; setMode('recording'); };
 
   sendBtn.onclick = () => {
-    const q = askInput.value.trim();
+    let q = askInput.value.trim();
     if (!q) return;
-    const extra = activeCaptureData ? { imageBase64: activeCaptureData } : {};
     askInput.value = '';
+
+    // Automatically inject the live transcript context into the user's question!
+    // This allows the AI to answer questions like "what did they just ask me to do?"
+    const contextText = transcriptEl.innerText || aggregatedTranscript;
+    if (contextText.trim()) {
+      q = q + "\n\n--- Meeting / Interview Context ---\n" + contextText;
+    }
+
+    const extra = activeCaptureData ? { imageBase64: activeCaptureData } : {};
     runAIAction(q, extra);
   };
   askInput.onkeypress = (e) => { if (e.key === 'Enter') sendBtn.click(); };
