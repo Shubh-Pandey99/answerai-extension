@@ -260,10 +260,33 @@ def root():
     <div class="badge"><span></span> Scribe Intelligence API Active</div>
     <h1>The Ultimate Undercover<br>Interview Co-Pilot.</h1>
     <p class="subtitle">A stealth Chrome Extension that listens to your microphone, captures your screen, and uses AI to instantly solve LeetCode algorithms, handle behavioral questions, and pull up contextual knowledge in real-time.</p>
-    
-    <!-- Video / GIF Showcase -->
-    <div style="margin: 0 auto 60px; max-width: 800px; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
-      <img src="https://raw.githubusercontent.com/Shubh-Pandey99/scribe/main/demo.gif" alt="Scribe Demo" style="width: 100%; display: block;" onerror="this.src='https://placehold.co/800x450/1e293b/94a3b8?text=Demo+GIF+Loading...'">
+    <!-- How It Works / Setup Guide -->
+    <div class="steps-container" style="text-align: left; max-width: 900px; margin: 0 auto 60px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px;">
+      
+      <!-- Step 1 -->
+      <div style="background: var(--bg-card); padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+        <div style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 16px;">1</div>
+        <h3 style="margin-bottom: 8px; font-size: 18px; color: #f8fafc;">Connect the Backend</h3>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px; min-height: 45px;">Click the ⚙️ Settings icon in the Chrome Extension and paste this Vercel API URL to link your free Groq & Gemini endpoints.</p>
+        <div style="width: 100%; aspect-ratio: 16/9; background: #0f172a; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px;">[ Image: Settings Menu ]</div>
+      </div>
+
+      <!-- Step 2 -->
+      <div style="background: var(--bg-card); padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+        <div style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 16px;">2</div>
+        <h3 style="margin-bottom: 8px; font-size: 18px; color: #f8fafc;">Go Stealth & Record</h3>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px; min-height: 45px;">Click the 👁️ Stealth toggle to blur the UI. Hit 'Record Mic' to begin seamlessly transcribing the interviewer's audio.</p>
+        <div style="width: 100%; aspect-ratio: 16/9; background: #0f172a; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px;">[ Image: Stealth UI & Mic ]</div>
+      </div>
+
+      <!-- Step 3 -->
+      <div style="background: var(--bg-card); padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+        <div style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 16px;">3</div>
+        <h3 style="margin-bottom: 8px; font-size: 18px; color: #f8fafc;">Snap Context & Ask</h3>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px; min-height: 45px;">Use Cmd+Shift+4 to screenshot a problem, press Ctrl+V to paste it into Scribe, and instantly receive the optimal AI solution.</p>
+        <div style="width: 100%; aspect-ratio: 16/9; background: #0f172a; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px;">[ Image: AI Output ]</div>
+      </div>
+
     </div>
 
     <div class="actions">
