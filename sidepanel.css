@@ -511,6 +511,17 @@ body {
   margin-bottom: 12px;
 }
 
+.ai-text h1, .ai-text h2, .ai-text h3 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.ai-text h1 { font-size: 1.25em; border-bottom: 1px solid #e5e8ec; padding-bottom: 4px; }
+.ai-text h2 { font-size: 1.15em; }
+.ai-text h3, .ai-text h4 { font-size: 1.05em; margin-bottom: 6px; }
+
 .ai-text pre {
   background: #1e1e1e; /* Base dark background if highlight.js not overriding */
   color: #d4d4d4;

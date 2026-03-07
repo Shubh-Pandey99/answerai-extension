@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let mediaRecorder = null;
   let audioContext = null;
   let volumeRaf = null;
+  let chunkTimer = null;
   let sessionId = crypto.randomUUID();
   let sessionStart = null;
 
@@ -96,6 +97,31 @@ document.addEventListener('DOMContentLoaded', () => {
       const fr = new FileReader();
       fr.onload = () => resolve(fr.result);
       fr.readAsDataURL(blob);
+    });
+  }
+
+  function resizeImageBase64(dataUrl, maxDims = 1920) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDims || height > maxDims) {
+          const ratio = Math.min(maxDims / width, maxDims / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        } else {
+          resolve(dataUrl);
+          return;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85)); // compress to 85% Quality
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
     });
   }
 
@@ -226,6 +252,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Common setup for recording (used by both tabCapture and getDisplayMedia)
   function setupRecording(audioTracks) {
       isRecording = true;
+      aggregatedTranscript = '';
+      transcriptEl.textContent = '';
       sessionStart = new Date().toISOString();
       sessionId = crypto.randomUUID();
       appContainer.classList.add('recording');
@@ -310,7 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- MANAGE RECORDING IN CHUNKS ---
         // We use a start/stop loop instead of .start(5000) so that *every* chunk
         // gets a complete WebM header. Groq will reject chunks that are just raw clusters.
-        let chunkTimer = null;
 
         function recordNextChunk() {
           if (!isRecording) return;
@@ -337,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const curVol = meterFill ? parseInt(meterFill.style.width) || 0 : -1;
             logStatus("Chunk: " + (e.data.size / 1024).toFixed(1) + "KB vol:" + curVol + "%");
             const b64 = await blobToDataURL(e.data);
-            if (chunkQueue.length >= 3) chunkQueue.shift();
+            if (chunkQueue.length >= 15) chunkQueue.shift(); // 75 second buffer max to prevent transcript drop off
             chunkQueue.push({ b64, mime: e.data.type });
             processQueue();
           };
@@ -370,6 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mediaRecorder.stop(); 
       }
     } catch { }
+    if (chunkTimer) clearTimeout(chunkTimer);
     try { mediaStream?.getTracks().forEach(t => t.stop()); } catch { }
     try { if (volumeRaf) cancelAnimationFrame(volumeRaf); } catch { }
     try { audioContext?.close(); } catch { }
@@ -441,6 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Open session logic
         card.onclick = () => {
+          sessionId = s.id;
           aggregatedTranscript = s.transcript || '';
           transcriptEl.textContent = aggregatedTranscript;
           setMode('recording');
@@ -477,10 +506,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab) return;
-      chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 90 }, (dataUrl) => {
+      chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 90 }, async (dataUrl) => {
         if (chrome.runtime.lastError) { showError("Snap failed: " + chrome.runtime.lastError.message); return; }
-        activeCaptureData = dataUrl;
-        activeImage.src = dataUrl;
+        // Compress scale on large 4k screens to prevent 413 Payload Too large on backend
+        activeCaptureData = await resizeImageBase64(dataUrl, 1600); 
+        activeImage.src = activeCaptureData;
         setMode('captured');
       });
     } catch (e) { showError("Snap error: " + e.message); }
