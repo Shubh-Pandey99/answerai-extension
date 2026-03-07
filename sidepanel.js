@@ -256,24 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
         [audioOnlyStream, {}],
       ];
 
-      let recorder = null;
-      for (const [stream, opts] of configs) {
-        try {
-          recorder = new MediaRecorder(stream, opts);
-          recorder.start(5000);
-          logStatus("Recorder: " + recorder.mimeType);
-          break;
-        } catch { recorder = null; }
-      }
-      if (!recorder) {
-        showError("No working recorder on this device.");
-        stopRecording();
-        return;
-      }
-
-      mediaRecorder = recorder;
-      mediaRecorder.onerror = (ev) => logStatus("Rec err: " + (ev.error?.message || "?"));
-
       getApiBase().then(apiBase => {
         logStatus("API: " + new URL(apiBase).hostname);
 
@@ -317,31 +299,66 @@ document.addEventListener('DOMContentLoaded', () => {
           if (chunkQueue.length > 0) processQueue();
         }
 
-        mediaRecorder.ondataavailable = async (e) => {
-          if (!e.data || e.data.size < 100) return;
-          const curVol = meterFill ? parseInt(meterFill.style.width) || 0 : -1;
-          logStatus("Chunk: " + (e.data.size / 1024).toFixed(1) + "KB vol:" + curVol + "%");
-          const b64 = await blobToDataURL(e.data);
-          if (chunkQueue.length >= 3) chunkQueue.shift();
-          chunkQueue.push({ b64, mime: e.data.type });
-          processQueue();
-        };
-      });
+        // --- MANAGE RECORDING IN CHUNKS ---
+        // We use a start/stop loop instead of .start(5000) so that *every* chunk
+        // gets a complete WebM header. Groq will reject chunks that are just raw clusters.
+        let chunkTimer = null;
 
-      mediaRecorder.onstop = () => logStatus("⚠ MediaRecorder stopped");
+        function recordNextChunk() {
+          if (!isRecording) return;
+          
+          let recorder = null;
+          for (const [stream, opts] of configs) {
+            try {
+              recorder = new MediaRecorder(stream, opts);
+              break; // use first working config
+            } catch { } // ignore
+          }
 
-      logStatus("🎙 Recording started!");
-      // Stop only on audio track ending
-      audioTracks[0]?.addEventListener('ended', () => {
-        logStatus("⚠ Audio track ended");
-        stopRecording();
+          if (!recorder) {
+            showError("No working recorder on this device.");
+            stopRecording();
+            return;
+          }
+
+          mediaRecorder = recorder; // set global so stopRecording() cleans it up
+          mediaRecorder.onerror = (ev) => logStatus("Rec err: " + (ev.error?.message || "?"));
+
+          mediaRecorder.ondataavailable = async (e) => {
+            if (!e.data || e.data.size < 100) return;
+            const curVol = meterFill ? parseInt(meterFill.style.width) || 0 : -1;
+            logStatus("Chunk: " + (e.data.size / 1024).toFixed(1) + "KB vol:" + curVol + "%");
+            const b64 = await blobToDataURL(e.data);
+            if (chunkQueue.length >= 3) chunkQueue.shift();
+            chunkQueue.push({ b64, mime: e.data.type });
+            processQueue();
+          };
+
+          mediaRecorder.start(); // No timeslice here
+
+          chunkTimer = setTimeout(() => {
+            if (isRecording && mediaRecorder && mediaRecorder.state !== 'inactive') {
+              mediaRecorder.stop();
+              recordNextChunk(); // Start a new file-chunk immediately
+            }
+          }, 5000); // 5s segments
+        }
+
+        recordNextChunk();
+        logStatus("🎙 Recording started!");
+
+        // Only stop on audio track ending
+        audioTracks[0]?.addEventListener('ended', () => {
+          logStatus("⚠ Audio track ended");
+          if (chunkTimer) clearTimeout(chunkTimer);
+          stopRecording();
+        });
       });
   }
 
   function stopRecording() {
     try { 
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.requestData(); // Get the last bit of audio
         mediaRecorder.stop(); 
       }
     } catch { }
