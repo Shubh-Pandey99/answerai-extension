@@ -299,9 +299,11 @@ document.addEventListener('DOMContentLoaded', () => {
               const data = await res.json();
               if (data && data.text && data.text.trim() && data.text.trim().length > 1 && !['SILENT','MUSIC','.'].includes(data.text.trim())) {
                 appendTranscript(data.text);
-                logStatus("[" + (data.method || "?") + "] transcribed");
+                logStatus("[" + (data.method || "?") + "] ✓");
               } else {
-                logStatus("● " + (data.method || "skip") + ": no speech");
+                // Show debug info so we can see WHY transcription failed
+                const dbg = data.debug ? " | " + data.debug.substring(0, 80) : "";
+                logStatus((data.method || "none") + ": no speech" + dbg);
               }
             } else {
               const t = await res.text();
