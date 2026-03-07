@@ -156,8 +156,10 @@ from flask import send_file
 
 db_error = None
 try:
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
+    import urllib.parse
+    import ssl
+    import pg8000.dbapi
+    pg8000.dbapi.paramstyle = 'format'
 except Exception as e:
     db_error = f"Import error: {e}"
 
@@ -166,7 +168,18 @@ def get_db_connection():
     db_url = os.environ.get("POSTGRES_URL")
     if not db_url: return None
     try:
-        return psycopg2.connect(db_url)
+        parsed = urllib.parse.urlparse(db_url)
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        return pg8000.dbapi.connect(
+            user=parsed.username,
+            password=parsed.password,
+            host=parsed.hostname,
+            database=parsed.path[1:],
+            port=parsed.port or 5432,
+            ssl_context=context
+        )
     except Exception as e:
         global db_error
         db_error = f"Connect error: {e}"
@@ -253,9 +266,10 @@ def get_sessions():
     conn = get_db_connection()
     if not conn: return jsonify({"error": f"No database attached. {db_error}"}), 503
     try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT * FROM scribe_sessions ORDER BY created_at DESC LIMIT 50")
-            rows = cur.fetchall()
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, title, transcript, created_at FROM scribe_sessions ORDER BY created_at DESC LIMIT 50")
+            cols = [desc[0] for desc in cur.description]
+            rows = [dict(zip(cols, row)) for row in cur.fetchall()]
         # Convert datetime to string
         for r in rows:
             if r.get('created_at'): r['started_at'] = r['created_at'].isoformat()
